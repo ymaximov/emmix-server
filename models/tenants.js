@@ -52,20 +52,24 @@ module.exports = (sequelize, DataTypes) => {
     type: DataTypes.STRING,
     allowNull: true
   },
+    country: {
+      type: DataTypes.STRING,
+      allowNull: false
+    },
   postal_code: {
     type: DataTypes.STRING,
     allowNull: false
   },
-  password: {
-    type: DataTypes.STRING,
-    allowNull: false
-  },
   account_status: {
-    type: DataTypes.ENUM,
-    values: ['active', 'inactive', "deleted"],
-    defaultValue: 'active',
-    allowNull: false
-  }
+      type: DataTypes.ENUM,
+      values: ['active', 'inactive', "deleted"],
+      defaultValue: 'active',
+      allowNull: false
+    },
+    security_code: {
+      type: DataTypes.STRING,
+      allowNull: false
+    }
 
   }, {
     sequelize,

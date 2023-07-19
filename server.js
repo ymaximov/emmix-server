@@ -22,6 +22,7 @@ app.use(function(req, res, next) {
     next();
 });
 
+app.use('/api/admin', require('./routes/admin'))
 app.use('/api/user', require('./routes/user'))
 
 sequelize.sync().then(result => {

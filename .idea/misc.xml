@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectRootManager">
+    <output url="file://$PROJECT_DIR$/out" />
+  </component>
+  <component name="textProvider.cache">
+    <option name="items">
+      <set>
+        <option value="by" />
+        <option value="count" />
+        <option value="from" />
+        <option value="having" />
+        <option value="limit" />
+        <option value="order" />
+        <option value="select" />
+        <option value="sum" />
+        <option value="where" />
+      </set>
+    </option>
+  </component>
+</project>
