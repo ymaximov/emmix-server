@@ -12,11 +12,16 @@ const loginUser = async(req, res, next) => {
         const options = {
             where: {
                 email
-            }
+            },
+            include: {
+                model: models.tenants,
+                attributes: ['company_name'], // Specify the attributes you want to retrieve (e.g., 'name')
+            },
+
         };
         console.log('after options', email)
         const user = await models.users.findOne(options);
-        console.log('after user')
+        console.log('***user details**',user)
 
         if(!user) {
             return res.status(404)
@@ -64,6 +69,7 @@ const loginUser = async(req, res, next) => {
             last_name: user.last_name,
             email: user.email,
             role: user.role,
+            tenant_company_name: user.tenant.company_name,
             access_token,
             access_token_expiry,
             refresh_token,
