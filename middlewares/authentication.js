@@ -6,7 +6,7 @@ const auth = (req, res, next) => {
         const token = req.headers.authorization;
         const decodedToken = jwt.verify(token.trim().replace('Bearer ', ''), process.env.JWT_ACCESS_SECRET);
         req.email = decodedToken.email;
-        req.user_id = decodedToken.user_id;
+        req.id = decodedToken.id;
         req.role = decodedToken.role;
         next()
     } catch (error) {

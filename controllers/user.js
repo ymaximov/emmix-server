@@ -4,6 +4,41 @@ const jwt = require('jsonwebtoken');
 const moment = require('moment');
 const models = require('../models')
 
+const addUser = async(req, res, next) => {
+    try {
+        const {email, password, first_name, last_name, phone, role, tenant_id} = req.body;
+        console.log('***REQUEST BODY****', req.body)
+        console.log('***first Name*** B4', first_name)
+        const options = {
+            where: {
+                email
+            },
+        }
+
+        const user = await models.users.findOne(options)
+        if (user){
+            return res.status(403).send({message: 'User already exists', success: false})
+        } else {
+
+            const salt = await bcrypt.genSalt(10);
+            const hashedPassword = await bcrypt.hash(password, salt);
+
+            // req.body.password = hashedPassword;
+
+            console.log('***first Name*** AFTER', first_name)
+            console.log('***TENANT ID', tenant_id)
+
+            const newUser = await models.users.create({
+                tenant_id, first_name, last_name, email, password: hashedPassword, phone, role
+            });
+            res.status(200).send({message: 'User created successfully', success: true})
+        }
+
+    } catch (error) {
+        res.status(500).send({message: 'Error creating user', success: false, error});
+        console.log('***ERROR***', error)
+    }
+}
 const loginUser = async(req, res, next) => {
     console.log(req.body)
     try {
@@ -15,7 +50,7 @@ const loginUser = async(req, res, next) => {
             },
             include: {
                 model: models.tenants,
-                attributes: ['company_name'], // Specify the attributes you want to retrieve (e.g., 'name')
+                attributes: ['company_name', 'id'], // Specify the attributes you want to retrieve (e.g., 'name')
             },
 
         };
@@ -70,6 +105,7 @@ const loginUser = async(req, res, next) => {
             email: user.email,
             role: user.role,
             tenant_company_name: user.tenant.company_name,
+            tenant_id: user.tenant.id,
             access_token,
             access_token_expiry,
             refresh_token,
@@ -83,5 +119,6 @@ const loginUser = async(req, res, next) => {
 }
 
 module.exports = {
+    addUser,
     loginUser
 }

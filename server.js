@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
+const bodyParser = require('body-parser')
 
 const { sequelize } = require('./models');
 
@@ -21,6 +22,8 @@ app.use(function(req, res, next) {
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     next();
 });
+
+app.use(bodyParser.json())
 
 app.use('/api/admin', require('./routes/admin'))
 app.use('/api/user', require('./routes/user'))
