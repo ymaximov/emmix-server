@@ -8,5 +8,6 @@ router.post('/create-tenant',  adminController.createTenant )
 router.get('/get-all-tenants',   adminController.getAllTenants)
 router.put('/update-tenant-profile/:id', adminController.updateTenant )
 router.get('/get-user-accounts-by-tenant-id/:id',  adminController.getUserAccountsByTenant)
+router.put('/reset-password', adminController.resetPassword)
 
 module.exports = router

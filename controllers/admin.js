@@ -70,9 +70,47 @@ const getUserAccountsByTenant = async(req, res, next) => {
     }
 }
 
+const resetPassword = async(req, res, next) => {
+    try {
+        const {email, password, confirm_password} = req.body;
+        console.log('***REQUEST BODY****', req.body)
+        const options = {
+            where: {
+                email
+            },
+        }
+        const isPasswordMatch = password === confirm_password
+        const user = await models.users.findOne(options)
+
+
+
+        if (!user){
+            console.log('there is no user')
+            return res.status(403).send({message: 'User does not exist', success: false})
+        } else if(!isPasswordMatch){
+            console.log('passwords dont match')
+            return res.status(409).send({message: 'Passwords do not match', success: false})
+        } else {
+        console.log('trying to update password')
+            const salt = await bcrypt.genSalt(10);
+            const hashedPassword = await bcrypt.hash(password, salt);
+
+            const updatedPassword = await user.update({
+                password: hashedPassword
+            });
+        console.log('updated password' , updatedPassword)
+            res.status(200).send({message: 'password updated successfully', success: true})
+        }
+    } catch (error) {
+        res.status(500).send({message: 'Error updating password', success: false, error});
+        console.log('***ERROR***', error)
+    }
+}
+
 module.exports = {
     createTenant,
     getAllTenants,
     updateTenant,
-    getUserAccountsByTenant
+    getUserAccountsByTenant,
+    resetPassword
 }

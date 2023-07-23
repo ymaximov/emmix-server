@@ -64,61 +64,97 @@ const loginUser = async(req, res, next) => {
         }
 
 
-        // const isValidUser = await bcrypt.compare(password, user.password);
-        const isValidUser = password === user.password
+        const isValidUser = await bcrypt.compare(password, user.password);
+        console.log(password, user.password)
+        console.log('ISVALIDUSER*****', isValidUser)
+        // const isValidUser = password === user.password
 
-        if(!isValidUser) {
-            // throw new httpErrors.Unauthorized({message: 'Invalid Password'});
-            return res.status(401)
-                .send({message: 'Password is incorrect', success: false})
-        }
-
-        const access_token = jwt.sign({
-            email: user.email,
-            user_id: user.id,
-            role: user.role,
-            first_name: user.first_name,
-            last_name: user.last_name,
-        },
-            process.env.JWT_SECRET, {
-            expiresIn: '8h',
+        if (isValidUser) {
+            const access_token = jwt.sign({
+                    email: user.email,
+                    user_id: user.id,
+                    role: user.role,
+                    first_name: user.first_name,
+                    last_name: user.last_name,
+                },
+                process.env.JWT_SECRET, {
+                    expiresIn: '8h',
+                    algorithm: 'HS384'
+                })
+            const refresh_token = jwt.sign({
+                email: user.email,
+                user_id: user.id,
+                role: user.role,
+                first_name: user.first_name,
+                last_name: user.last_name,
+            }, process.env.JWT_SECRET, {
+                expiresIn: '1d',
                 algorithm: 'HS384'
-            })
-        const refresh_token = jwt.sign({
-            email: user.email,
-            user_id: user.id,
-            role: user.role,
-            first_name: user.first_name,
-            last_name: user.last_name,
-        }, process.env.JWT_SECRET, {
-            expiresIn: '1d',
-            algorithm: 'HS384'
             });
 
-        const access_token_expiry = moment().add(1, 'day').valueOf();
-        const refresh_token_expiry = moment().add(2, 'months').valueOf();
+            const access_token_expiry = moment().add(1, 'day').valueOf();
+            const refresh_token_expiry = moment().add(2, 'months').valueOf();
 
-        res.status(200).json({
-            user_id: user.id,
-            first_name: user.first_name,
-            last_name: user.last_name,
-            email: user.email,
-            role: user.role,
-            tenant_company_name: user.tenant.company_name,
-            tenant_id: user.tenant.id,
-            access_token,
-            access_token_expiry,
-            refresh_token,
-            refresh_token_expiry
-        });
-        console.log('user has logged in')
+            res.status(200).json({
+                user_id: user.id,
+                first_name: user.first_name,
+                last_name: user.last_name,
+                email: user.email,
+                role: user.role,
+                tenant_company_name: user.tenant.company_name,
+                tenant_id: user.tenant.id,
+                access_token,
+                access_token_expiry,
+                refresh_token,
+                refresh_token_expiry
+            });
+            console.log('user has logged in')
+        } else {
+            return res.status(401)
+            .send({message: 'Password is incorrect', success: false})
+        }
+        // if(!isValidUser) {
+        //     // throw new httpErrors.Unauthorized({message: 'Invalid Password'});
+        //     return res.status(401)
+        //         .send({message: 'Password is incorrect', success: false})
+        // }
+
+
     } catch (error){
         next(error)
-        console.log(error)
+        console.log('****ERROR***', error)
+    }
+}
+
+const updateUser = async(req, res, next) => {
+    try {
+        const {email, password, first_name, last_name, phone, role, tenant_id} = req.body;
+        console.log('***REQUEST BODY****', req.body)
+        console.log('***first Name*** B4', first_name)
+        const options = {
+            where: {
+                email
+            },
+        }
+        const user = await models.users.findOne(options)
+
+
+            // const salt = await bcrypt.genSalt(10);
+            // const hashedPassword = await bcrypt.hash(password, salt);
+
+            const newUser = await user.update({
+                tenant_id, first_name, last_name, email, phone, role
+            });
+            res.status(200).send({message: 'User updated successfully', success: true})
+
+    } catch (error) {
+        res.status(500).send({message: 'Error updating user', success: false, error});
+        console.log('***ERROR***', error)
     }
 }
 
 module.exports = {
     addUser,
-    loginUser
+    loginUser,
+    updateUser
 }
