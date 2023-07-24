@@ -128,7 +128,7 @@ const loginUser = async(req, res, next) => {
 
 const updateUser = async(req, res, next) => {
     try {
-        const {email, password, first_name, last_name, phone, role, tenant_id} = req.body;
+        const {email, password, first_name, last_name, phone, role, tenant_id, account_status} = req.body;
         console.log('***REQUEST BODY****', req.body)
         console.log('***first Name*** B4', first_name)
         const options = {
@@ -142,9 +142,7 @@ const updateUser = async(req, res, next) => {
             // const salt = await bcrypt.genSalt(10);
             // const hashedPassword = await bcrypt.hash(password, salt);
 
-            const newUser = await user.update({
-                tenant_id, first_name, last_name, email, phone, role
-            });
+            const newUser = await user.update(req.body);
             res.status(200).send({message: 'User updated successfully', success: true})
 
     } catch (error) {
