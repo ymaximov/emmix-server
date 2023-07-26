@@ -12,7 +12,7 @@ const addNewCustomer = async(req, res, next) => {
             first_name,
             last_name,
             email,
-            phone,
+            phone_1,
             fax,
             industry,
             customer_type,
@@ -36,10 +36,10 @@ const addNewCustomer = async(req, res, next) => {
         console.log('***REQUEST BODY****', req.body)
 
             const salt = await bcrypt.genSalt(10);
-            const creditCard = await bcrypt.hash(cc_number, salt);
-            const cvc = await bcrypt.hash(cc_security_code, salt);
-            const bankAccountNo = await bcrypt.hash(bank_account_no, salt);
-            const swift = await bcrypt.hash(bic_swift, salt);
+            const creditCard = cc_number == null ? null : await bcrypt.hash(cc_number, salt)
+            const cvv = cc_security_code == null ? null : await bcrypt.hash(cc_security_code, salt)
+            const bankAccountNo = bank_account_no == null ? null : await bcrypt.hash(bank_account_no, salt) ;
+            const swift = bic_swift == null ? null : await bcrypt.hash(bic_swift, salt);
 
             // req.body.password = hashedPassword;
 
@@ -51,7 +51,7 @@ const addNewCustomer = async(req, res, next) => {
                 first_name,
                 last_name,
                 email,
-                phone,
+                phone_1,
                 fax,
                 industry,
                 customer_type,
@@ -59,7 +59,7 @@ const addNewCustomer = async(req, res, next) => {
                 late_interest,
                 cc_number: creditCard,
                 cc_expiration,
-                cc_security_code: cvc,
+                cc_security_code: cvv,
                 cc_id,
                 bank_country,
                 bank_name,
@@ -80,6 +80,24 @@ const addNewCustomer = async(req, res, next) => {
     }
 }
 
+const getCustomersByTenant = async(req, res, next) => {
+    const tenant_id = req.params.id;
+    console.log(tenant_id, 'TENANTID')
+    try {
+        const customers = await models.customers.findAll({
+            where: {
+                tenant_id,
+            },
+        });
+        console.log(customers)
+        res.status(200).send({message: 'Customers have been fetched successfully', data: customers});
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching customers' });
+        console.log(error)
+    }
+}
+
 module.exports = {
-    addNewCustomer
+    addNewCustomer,
+    getCustomersByTenant
 }

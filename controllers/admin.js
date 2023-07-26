@@ -63,7 +63,7 @@ const getUserAccountsByTenant = async(req, res, next) => {
             },
         });
         console.log(users)
-        res.send({message: 'User accounts have been fetched successfully', data: users});
+        res.status(200).send({message: 'User accounts have been fetched successfully', data: users});
     } catch (error) {
         res.status(500).json({ message: 'Error fetching tenants' });
         console.log(error)
