@@ -12,7 +12,7 @@ module.exports = (sequelize, DataTypes) => {
          */
         static associate(models) {
             // define association here
-            User.belongsTo(models.tenants, { foreignKey: 'tenant_id' })
+            Customer.belongsTo(models.tenants, { foreignKey: 'tenant_id' })
         }
     }
     Customer.init({
@@ -29,11 +29,39 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.STRING,
             allowNull: true
         },
+        tax_id: {
+            type: DataTypes.STRING,
+            allowNull: true
+        },
         first_name: {
             type: DataTypes.STRING,
             allowNull: true
         },
         last_name: {
+            type: DataTypes.STRING,
+            allowNull: true
+        },
+        address_1: {
+            type: DataTypes.STRING,
+            allowNull: true
+        },
+        address_2: {
+            type: DataTypes.STRING,
+            allowNull: true
+        },
+        city: {
+            type: DataTypes.STRING,
+            allowNull: true
+        },
+        state: {
+            type: DataTypes.STRING,
+            allowNull: true
+        },
+        postal_code: {
+            type: DataTypes.STRING,
+            allowNull: true
+        },
+        country: {
             type: DataTypes.STRING,
             allowNull: true
         },
@@ -46,7 +74,7 @@ module.exports = (sequelize, DataTypes) => {
             allowNull: true
         },
 
-        phone_2: {
+        contact_phone: {
             type: DataTypes.STRING,
             allowNull: true
         },

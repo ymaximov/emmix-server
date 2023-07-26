@@ -42,6 +42,10 @@ module.exports = {
         type: Sequelize.STRING,
         allowNull: true,
       },
+      contact_name: {
+        type: Sequelize.STRING,
+        allowNull: true,
+      },
       fax: {
         type: Sequelize.STRING,
         allowNull: true,

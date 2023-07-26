@@ -27,6 +27,7 @@ app.use(bodyParser.json())
 
 app.use('/api/admin', require('./routes/admin'))
 app.use('/api/user', require('./routes/user'))
+app.use('/api/crm', require('./routes/crm'))
 
 sequelize.sync().then(result => {
     const {SERVER_PORT = 8080} = process.env;
