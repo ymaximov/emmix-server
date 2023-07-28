@@ -123,7 +123,89 @@ const getCustomersByTenant = async(req, res, next) => {
     }
 }
 
+const updateCustomer = async(req, res, next) => {
+    try {
+        const {
+            id,
+            company_name,
+            first_name,
+            last_name,
+            email,
+            phone_1,
+            fax,
+            industry,
+            customer_type,
+            payment_terms,
+            late_interest,
+            cc_number,
+            cc_expiration,
+            cc_security_code,
+            cc_id,
+            bank_country,
+            bank_name,
+            bank_code,
+            bank_account_no,
+            bic_swift,
+            bank_account_name,
+            bank_branch,
+            bank_signature_date,
+            remarks
+
+        } = req.body;
+        console.log('***REQUEST BODY****', req.body);
+
+        const options = {
+            where: {
+                id
+            },
+        }
+        const customer = await models.customers.findOne(options)
+
+        const creditCard = cc_number == null ? null : CryptoJS.AES.encrypt(cc_number, secretKey).toString();
+        const cvv = cc_security_code == null ? null : CryptoJS.AES.encrypt(cc_security_code, secretKey).toString();
+        const bankAccountNo = bank_account_no == null ? null : CryptoJS.AES.encrypt(bank_account_no, secretKey).toString();
+        const swift = bic_swift == null ? null : CryptoJS.AES.encrypt(bic_swift, secretKey).toString();
+        const customerType = customer_type == null ? null : customer_type
+        // req.body.password = hashedPassword;
+
+        console.log('***TENANT ID', tenant_id)
+
+        const updateCustomer = await customer.update({
+            company_name,
+            first_name,
+            last_name,
+            email,
+            phone_1,
+            fax,
+            industry,
+            customer_type: customerType,
+            payment_terms,
+            late_interest,
+            cc_number: creditCard,
+            cc_expiration,
+            cc_security_code: cvv,
+            cc_id,
+            bank_country,
+            bank_name,
+            bank_code,
+            bank_account_no: bankAccountNo,
+            bic_swift: swift,
+            bank_account_name,
+            bank_branch,
+            bank_signature_date,
+            remarks
+        });
+        res.status(200).send({message: 'Customer updated successfully', success: true})
+        console.log('customer has been updated')
+
+    } catch (error) {
+        res.status(500).send({message: 'Error updating customer', success: false, error});
+        console.log('***ERROR***', error)
+    }
+}
+
 module.exports = {
     addNewCustomer,
-    getCustomersByTenant
+    getCustomersByTenant,
+    updateCustomer
 }
