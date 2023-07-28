@@ -34,7 +34,13 @@ const addNewCustomer = async(req, res, next) => {
             bank_account_name,
             bank_branch,
             bank_signature_date,
-            remarks
+            remarks,
+            address_1,
+            address_2,
+            city,
+            state,
+            postal_code,
+            country
 
         } = req.body;
         console.log('***REQUEST BODY****', req.body)
@@ -73,7 +79,14 @@ const addNewCustomer = async(req, res, next) => {
                 bank_account_name,
                 bank_branch,
                 bank_signature_date,
-                remarks
+                remarks,
+                address_1,
+                address_2,
+                city,
+                state,
+                postal_code,
+                country
+
             });
             res.status(200).send({message: 'Customer created successfully', success: true})
         console.log('new customer has been created')
@@ -153,7 +166,14 @@ const updateCustomer = async(req, res, next) => {
             bank_branch,
             bank_signature_date,
             tax_id,
-            remarks
+            remarks,
+            address_1,
+            address_2,
+            city,
+            state,
+            postal_code,
+            country
+
 
         } = req.body;
         console.log('***REQUEST BODY****', req.body);
@@ -199,7 +219,14 @@ const updateCustomer = async(req, res, next) => {
             bank_branch,
             bank_signature_date,
             tax_id,
-            remarks
+            remarks,
+            address_1,
+            address_2,
+            city,
+            state,
+            postal_code,
+            country
+
         });
         res.status(200).send({message: 'Customer updated successfully', success: true})
         console.log('customer has been updated')
