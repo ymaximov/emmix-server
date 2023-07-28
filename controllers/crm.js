@@ -3,6 +3,9 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const moment = require('moment');
 const models = require('../models')
+const CryptoJS = require('crypto-js');
+
+const secretKey = process.env.CRYPTO_SECRET
 
 const addNewCustomer = async(req, res, next) => {
     try {
@@ -35,12 +38,11 @@ const addNewCustomer = async(req, res, next) => {
         } = req.body;
         console.log('***REQUEST BODY****', req.body)
 
-            const salt = await bcrypt.genSalt(10);
-            const creditCard = cc_number == null ? null : await bcrypt.hash(cc_number, salt)
-            const cvv = cc_security_code == null ? null : await bcrypt.hash(cc_security_code, salt)
-            const bankAccountNo = bank_account_no == null ? null : await bcrypt.hash(bank_account_no, salt) ;
-            const swift = bic_swift == null ? null : await bcrypt.hash(bic_swift, salt);
-
+            const creditCard = cc_number == null ? null : CryptoJS.AES.encrypt(cc_number, secretKey).toString();
+            const cvv = cc_security_code == null ? null : CryptoJS.AES.encrypt(cc_security_code, secretKey).toString();
+            const bankAccountNo = bank_account_no == null ? null : CryptoJS.AES.encrypt(bank_account_no, secretKey).toString();
+            const swift = bic_swift == null ? null : CryptoJS.AES.encrypt(bic_swift, secretKey).toString();
+            const customerType = customer_type == null ? null : customer_type
             // req.body.password = hashedPassword;
 
             console.log('***TENANT ID', tenant_id)
@@ -54,7 +56,7 @@ const addNewCustomer = async(req, res, next) => {
                 phone_1,
                 fax,
                 industry,
-                customer_type,
+                customer_type: customerType,
                 payment_terms,
                 late_interest,
                 cc_number: creditCard,
@@ -83,14 +85,38 @@ const addNewCustomer = async(req, res, next) => {
 const getCustomersByTenant = async(req, res, next) => {
     const tenant_id = req.params.id;
     console.log(tenant_id, 'TENANTID')
+    const decryptColumn = (encryptedData, decryptionKey) => {
+        const bytes = CryptoJS.AES.decrypt(encryptedData, decryptionKey);
+        const decryptedData = bytes.toString(CryptoJS.enc.Utf8);
+        return decryptedData;
+    };
     try {
         const customers = await models.customers.findAll({
             where: {
                 tenant_id,
             },
         });
+        console.log('before', customers)
+        const decryptedCustomers = customers.map((customer) => {
+            // Assuming 'creditCard', 'ssn', and 'otherColumn' are encrypted columns in your database
+            const decryptedCreditCard = decryptColumn(customer.cc_number, secretKey);
+            const decryptedCCCode = decryptColumn(customer.cc_security_code, secretKey);
+            const decryptedBankAccNo = decryptColumn(customer.bank_account_no, secretKey);
+            const decryptedBicSwift = decryptColumn(customer.bic_swift, secretKey);
+
+            // Include the decrypted values along with the rest of the customer data
+            return {
+                ...customer.toJSON(),
+                cc_number: decryptedCreditCard,
+                cc_security_code: decryptedCCCode,
+                bank_account_no: decryptedBankAccNo,
+                bic_swift: decryptedBicSwift,
+            };
+        });
         console.log(customers)
-        res.status(200).send({message: 'Customers have been fetched successfully', data: customers});
+        console.log(decryptedCustomers)
+        res.status(200).send({message: 'Customers have been fetched successfully', data: decryptedCustomers});
+        console.log('data pushed to front')
     } catch (error) {
         res.status(500).json({ message: 'Error fetching customers' });
         console.log(error)

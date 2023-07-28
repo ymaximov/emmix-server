@@ -88,7 +88,7 @@ module.exports = (sequelize, DataTypes) => {
         },
         customer_type: {
             type: DataTypes.ENUM,
-            values: ['commercial', 'individual', 'government', ""],
+            values: ['commercial', 'individual', 'education', 'government'],
             allowNull: true
         },
         payment_terms: {
