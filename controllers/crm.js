@@ -15,6 +15,7 @@ const addNewCustomer = async(req, res, next) => {
             first_name,
             last_name,
             email,
+            tax_id,
             phone_1,
             fax,
             industry,
@@ -66,6 +67,7 @@ const addNewCustomer = async(req, res, next) => {
                 bank_country,
                 bank_name,
                 bank_code,
+                tax_id,
                 bank_account_no: bankAccountNo,
                 bic_swift: swift,
                 bank_account_name,
@@ -127,6 +129,7 @@ const updateCustomer = async(req, res, next) => {
     try {
         const {
             id,
+            tenant_id,
             company_name,
             first_name,
             last_name,
@@ -149,6 +152,7 @@ const updateCustomer = async(req, res, next) => {
             bank_account_name,
             bank_branch,
             bank_signature_date,
+            tax_id,
             remarks
 
         } = req.body;
@@ -171,6 +175,7 @@ const updateCustomer = async(req, res, next) => {
         console.log('***TENANT ID', tenant_id)
 
         const updateCustomer = await customer.update({
+            tenant_id,
             company_name,
             first_name,
             last_name,
@@ -193,6 +198,7 @@ const updateCustomer = async(req, res, next) => {
             bank_account_name,
             bank_branch,
             bank_signature_date,
+            tax_id,
             remarks
         });
         res.status(200).send({message: 'Customer updated successfully', success: true})
