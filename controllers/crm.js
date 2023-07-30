@@ -33,14 +33,14 @@ const addNewCustomer = async(req, res, next) => {
             bic_swift,
             bank_account_name,
             bank_branch,
-            bank_signature_date,
             remarks,
             address_1,
             address_2,
             city,
             state,
             postal_code,
-            country
+            country,
+            bank_signature_date
 
         } = req.body;
         console.log('***REQUEST BODY****', req.body)
@@ -85,7 +85,8 @@ const addNewCustomer = async(req, res, next) => {
                 city,
                 state,
                 postal_code,
-                country
+                country,
+                bank_signature_date
 
             });
             res.status(200).send({message: 'Customer created successfully', success: true})
@@ -164,7 +165,6 @@ const updateCustomer = async(req, res, next) => {
             bic_swift,
             bank_account_name,
             bank_branch,
-            bank_signature_date,
             tax_id,
             remarks,
             address_1,
@@ -172,9 +172,9 @@ const updateCustomer = async(req, res, next) => {
             city,
             state,
             postal_code,
-            country
-
-
+            country,
+            bank_signature_date,
+            status
         } = req.body;
         console.log('***REQUEST BODY****', req.body);
 
@@ -213,6 +213,8 @@ const updateCustomer = async(req, res, next) => {
             bank_country,
             bank_name,
             bank_code,
+            status,
+            bank_signature_date,
             bank_account_no: bankAccountNo,
             bic_swift: swift,
             bank_account_name,
