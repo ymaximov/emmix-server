@@ -94,7 +94,6 @@ module.exports = (sequelize, DataTypes) => {
         sales_tax: {
             type: DataTypes.ENUM,
             values: ['liable', 'exempt'],
-            defaultValue: 'liable',
             allowNull: true
         },
         payment_terms: {
@@ -102,50 +101,6 @@ module.exports = (sequelize, DataTypes) => {
             allowNull: true
         },
         late_interest: {
-            type: DataTypes.STRING,
-            allowNull: true
-        },
-        cc_number: {
-            type: DataTypes.STRING,
-            allowNull: true
-        },
-        cc_expiration: {
-            type: DataTypes.STRING,
-            allowNull: true
-        },
-        cc_security_code: {
-            type: DataTypes.STRING,
-            allowNull: true
-        },
-        cc_id: {
-            type: DataTypes.STRING,
-            allowNull: true
-        },
-        bank_country: {
-            type: DataTypes.STRING,
-            allowNull: true
-        },
-        bank_name: {
-            type: DataTypes.STRING,
-            allowNull: true
-        },
-        bank_code: {
-            type: DataTypes.STRING,
-            allowNull: true
-        },
-        bank_account_no: {
-            type: DataTypes.STRING,
-            allowNull: true
-        },
-        bic_swift: {
-            type: DataTypes.STRING,
-            allowNull: true
-        },
-        bank_branch: {
-            type: DataTypes.STRING,
-            allowNull: true
-        },
-        bank_signature_date: {
             type: DataTypes.STRING,
             allowNull: true
         },
