@@ -85,7 +85,79 @@ const getVendorsByTenant = async(req, res, next) => {
     }
 }
 
+const updateVendor = async(req, res, next) => {
+    try {
+        const {
+            id,
+            tenant_id,
+            company_name,
+            first_name,
+            last_name,
+            email,
+            phone_1,
+            fax,
+            industry,
+            vendor_type,
+            payment_terms,
+            tax_id,
+            remarks,
+            address_1,
+            address_2,
+            city,
+            state,
+            postal_code,
+            country,
+            sales_tax,
+            status
+        } = req.body;
+        console.log('***REQUEST BODY****', req.body);
+
+        const options = {
+            where: {
+                id
+            },
+        }
+        const vendor = await models.vendors.findOne(options)
+
+        const vendorType = vendor_type == null ? null : vendor_type
+        // req.body.password = hashedPassword;
+
+        console.log('***TENANT ID', tenant_id)
+
+        const updateVendor = await vendor.update({
+            tenant_id,
+            company_name,
+            first_name,
+            last_name,
+            email,
+            phone_1,
+            fax,
+            industry,
+            vendor_type: vendorType,
+            payment_terms,
+            status,
+            tax_id,
+            remarks,
+            address_1,
+            address_2,
+            city,
+            state,
+            postal_code,
+            country,
+            tax_id
+
+        });
+        res.status(200).send({message: 'Vendor updated successfully', success: true})
+        console.log('vendor has been updated')
+
+    } catch (error) {
+        res.status(500).send({message: 'Error updating vendor', success: false, error});
+        console.log('***ERROR***', error)
+    }
+}
+
 module.exports = {
     addNewVendor,
-    getVendorsByTenant
+    getVendorsByTenant,
+    updateVendor
 }
