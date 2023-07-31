@@ -43,7 +43,7 @@ module.exports = {
         type: Sequelize.INTEGER,
         allowNull: false,
         references: {
-          model: 'Tenants', // Replace 'Tenants' with the actual name of the tenants table
+          model: 'tenants', // Replace 'Tenants' with the actual name of the tenants table
           key: 'ID',
         },
       },

@@ -4,7 +4,7 @@ const {
     Model, Sequelize, DataTypes
 } = require('sequelize');
 module.exports = (sequelize, DataTypes) => {
-    class ShippingMethod extends Model {
+    class ItemGroup extends Model {
         /**
          * Helper method for defining associations.
          * This method is not a part of Sequelize lifecycle.
@@ -12,10 +12,10 @@ module.exports = (sequelize, DataTypes) => {
          */
         static associate(models) {
             // define association here
-            ShippingMethod.belongsTo(models.tenants, { foreignKey: 'tenant_id' })
+            ItemGroup.belongsTo(models.tenants, { foreignKey: 'tenant_id' })
         }
     }
-    ShippingMethod.init({
+    ItemGroup.init({
         tenant_id: {
             type: DataTypes.INTEGER,
             references: {
@@ -28,13 +28,13 @@ module.exports = (sequelize, DataTypes) => {
 
         name: {
             type: DataTypes.STRING,
-            allowNull: false
+            allowNull: true
         },
 
 
     }, {
         sequelize,
-        modelName: 'shipping_methods',
+        modelName: 'item_groups',
     });
-    return ShippingMethod;
+    return ItemGroup;
 };
