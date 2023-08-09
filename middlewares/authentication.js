@@ -4,12 +4,17 @@ const httpErrors = require('http-errors')
 const auth = (req, res, next) => {
     try {
         const token = req.headers.authorization;
-        const decodedToken = jwt.verify(token.trim().replace('Bearer ', ''), process.env.JWT_ACCESS_SECRET);
+        console.log(token, 'auth token')
+        console.log(process.env.JWT_ACCESS_SECRET, 'JWT SECRETE')
+        const decodedToken = jwt.verify(token.trim().replace('Bearer ', ''), process.env.JWT_SECRET);
+
         req.email = decodedToken.email;
         req.id = decodedToken.id;
         req.role = decodedToken.role;
+        console.log(req.id, req.role, 'middle ware user')
         next()
     } catch (error) {
+        console.log(error, 'middleware error')
         next(new httpErrors.Unauthorized('Session expired, please login again'))
     }
 };
@@ -17,7 +22,7 @@ const auth = (req, res, next) => {
 const isAdmin = (req, res, next) => {
     try {
         const token = req.headers.authorization;
-        const decodedToken = jwt.verify(token.replace('Bearer ', ''), process.env.JWT_ACCESS_SECRET);
+        const decodedToken = jwt.verify(token.replace('Bearer ', ''), process.env.JWT_SECRET);
         if(decodedToken.role !== 'admin'){
             throw new httpErrors.Unauthorized('You do not have permission to perform this operation.')
         }

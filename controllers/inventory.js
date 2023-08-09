@@ -36,7 +36,7 @@ const getItemGroups = async(req, res, next) => {
     console.log(tenant_id, 'TENANTID')
     try {
 
-        let itemGroups = await models.item_group.findAll({
+        let itemGroups = await models.item_groups.findAll({
             where: {
                 tenant_id
             }
@@ -107,10 +107,22 @@ const getWarehouses = async(req, res, next) => {
     }
 }
 
+const addItem = async(req, res, next) => {
+    console.log('REQ BODY*****', req.body)
+    try {
+        const newItem = await models.inventory_items.create(req.body)
+        res.status(200).send({message: 'Item created successfully', success: true})
+    } catch (error) {
+        res.status(500).send({message: 'Error creating item', success: false, error});
+        console.log('ERROR', error)
+    }
+}
+
 module.exports = {
     getVendors,
     getItemGroups,
     getManufacturers,
     getItemProperties,
-    getWarehouses
+    getWarehouses,
+    addItem
 }

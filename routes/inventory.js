@@ -9,5 +9,6 @@ router.get('/get-item-groups/:id', inventoryController.getItemGroups)
 router.get('/get-item-properties/:id', inventoryController.getItemProperties)
 router.get('/get-warehouses/:id', inventoryController.getWarehouses)
 router.get('/get-manufacturers/:id', inventoryController.getManufacturers)
+router.get('/add-new-inventory-item', inventoryController.addItem)
 
 module.exports = router
