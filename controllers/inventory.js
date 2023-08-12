@@ -118,11 +118,56 @@ const addItem = async(req, res, next) => {
     }
 }
 
+const getInventory = async(req, res, next) => {
+    const tenant_id = req.params.id;
+    console.log(tenant_id, 'TENANTID')
+    try {
+        const inventoryItems = await models.inventory_items.findAll({
+            where: {
+                tenant_id,
+            },
+        });
+        res.status(200).send({message: 'Inventory Items have been fetched successfully', data: inventoryItems});
+        console.log('data pushed to front')
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching Inventory Items' });
+        console.log(error)
+    }
+}
+
+const updateInventoryItem = async(req, res, next) => {
+    const {id, tenant_id} = req.body
+    console.log(id, 'IDDD')
+    try {
+
+        console.log('***REQUEST BODY****', req.body);
+
+        const options = {
+            where: {
+                id
+            },
+        }
+        const item = await models.inventory_items.findOne(options)
+
+        console.log('***TENANT ID', tenant_id)
+
+        const updateItem = await item.update(req.body);
+        res.status(200).send({message: 'Item updated successfully', success: true})
+        console.log('Item has been updated')
+
+    } catch (error) {
+        res.status(500).send({message: 'Error updating item', success: false, error});
+        console.log('***ERROR***', error)
+    }
+}
+
 module.exports = {
     getVendors,
     getItemGroups,
     getManufacturers,
     getItemProperties,
     getWarehouses,
-    addItem
+    addItem,
+    getInventory,
+    updateInventoryItem
 }

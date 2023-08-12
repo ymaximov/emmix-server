@@ -5,9 +5,9 @@ const userController = require("../controllers/user");
 const adminController = require('../controllers/admin')
 
 router.post('/create-tenant',  auth, isAdmin, adminController.createTenant )
-router.get('/get-all-tenants',   adminController.getAllTenants)
-router.put('/update-tenant-profile/:id', adminController.updateTenant )
-router.get('/get-user-accounts-by-tenant-id/:id',  adminController.getUserAccountsByTenant)
-router.put('/reset-password', adminController.resetPassword)
+router.get('/get-all-tenants',  auth, isAdmin, adminController.getAllTenants)
+router.put('/update-tenant-profile/:id', auth, isAdmin, adminController.updateTenant )
+router.get('/get-user-accounts-by-tenant-id/:id', auth, isAdmin, adminController.getUserAccountsByTenant)
+router.put('/reset-password', auth, isAdmin, adminController.resetPassword)
 
 module.exports = router

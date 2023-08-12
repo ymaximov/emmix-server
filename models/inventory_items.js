@@ -45,28 +45,36 @@ module.exports = (sequelize, DataTypes) => {
                 type: DataTypes.ENUM('items', 'labor', 'travel'),
                 defaultValue: 'items',
             },
-            item_name: DataTypes.STRING,
-            item_description: DataTypes.STRING,
-            sales_tax: {
-                type: DataTypes.ENUM('liable', 'exempt'),
-                defaultValue: 'liable',
+            item_name: {
+               type: DataTypes.STRING,
+                allowNull: true
+
             },
-            inventory_item: DataTypes.BOOLEAN,
+            item_description: DataTypes.STRING,
+            sales_tax: DataTypes.BOOLEAN,
+            inventory_item: {
+                type: DataTypes.BOOLEAN,
+                allowNull: true
+            },
             sales_item: DataTypes.BOOLEAN,
             purchasing_item: DataTypes.BOOLEAN,
             item_management: {
                 type: DataTypes.ENUM('none', 'serial', 'batch'),
                 defaultValue: 'none',
+                allowNull: true
             },
             manufacturer_id: {
-                allowNull: false,
+                allowNull: true,
                 type: DataTypes.INTEGER,
             },
             item_group_id: {
-                allowNull: false,
+                allowNull: true,
                 type: DataTypes.INTEGER,
             },
-            barcode: DataTypes.STRING,
+            barcode: {
+               type: DataTypes.STRING,
+                allowNull: true
+            },
             addit_identifier: DataTypes.STRING,
             country: DataTypes.STRING,
             vendor_1: DataTypes.INTEGER,
@@ -93,6 +101,8 @@ module.exports = (sequelize, DataTypes) => {
             warehouse_2: DataTypes.INTEGER,
             warehouse_3: DataTypes.INTEGER,
             warehouse_4: DataTypes.INTEGER,
+            cost: DataTypes.STRING,
+            price: DataTypes.STRING,
             prop_1: DataTypes.BOOLEAN,
             prop_2: DataTypes.BOOLEAN,
             prop_3: DataTypes.BOOLEAN,
@@ -111,7 +121,7 @@ module.exports = (sequelize, DataTypes) => {
         },
         {
             sequelize,
-            tableName: 'inventory_items',
+            modelName: 'inventory_items',
         }
     );
     return InventoryItem;

@@ -78,7 +78,7 @@ const loginUser = async(req, res, next) => {
                     last_name: user.last_name,
                 },
                 process.env.JWT_SECRET, {
-                    expiresIn: '8h',
+                    expiresIn: '2d',
                     algorithm: 'HS384'
                 })
             const refresh_token = jwt.sign({
@@ -88,7 +88,7 @@ const loginUser = async(req, res, next) => {
                 first_name: user.first_name,
                 last_name: user.last_name,
             }, process.env.JWT_SECRET, {
-                expiresIn: '1d',
+                expiresIn: '2d',
                 algorithm: 'HS384'
             });
 

@@ -5,7 +5,7 @@ const auth = (req, res, next) => {
     try {
         const token = req.headers.authorization;
         console.log(token, 'auth token')
-        console.log(process.env.JWT_ACCESS_SECRET, 'JWT SECRETE')
+        console.log(process.env.JWT_ACCESS_SECRET, 'JWT SECRET')
         const decodedToken = jwt.verify(token.trim().replace('Bearer ', ''), process.env.JWT_SECRET);
 
         req.email = decodedToken.email;

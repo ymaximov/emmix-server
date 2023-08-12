@@ -14,6 +14,7 @@ const addNewVendor = async(req, res, next) => {
             company_name,
             email,
             first_name,
+            last_name,
             phone_1,
             fax,
             industry,
@@ -43,6 +44,7 @@ const addNewVendor = async(req, res, next) => {
             company_name,
             email,
             first_name,
+            last_name,
             phone_1,
             fax,
             industry,
@@ -108,7 +110,8 @@ const updateVendor = async(req, res, next) => {
             postal_code,
             country,
             sales_tax,
-            status
+            status,
+            contact_phone
         } = req.body;
         console.log('***REQUEST BODY****', req.body);
 
@@ -133,6 +136,7 @@ const updateVendor = async(req, res, next) => {
             phone_1,
             fax,
             industry,
+            contact_phone,
             vendor_type: vendorType,
             payment_terms,
             status,

@@ -6,7 +6,7 @@ const userController = require('../controllers/user')
 router.post('/add-new-user', userController.addUser)
 
 router.post('/login', userController.loginUser )
-router.put('/update-user', userController.updateUser)
+router.put('/update-user', auth, userController.updateUser)
 
 
 
