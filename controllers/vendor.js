@@ -141,6 +141,7 @@ const updateVendor = async(req, res, next) => {
             payment_terms,
             status,
             tax_id,
+            sales_tax,
             remarks,
             address_1,
             address_2,
