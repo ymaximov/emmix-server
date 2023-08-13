@@ -43,10 +43,6 @@ module.exports = (sequelize, DataTypes) => {
                     key: 'id',
                 },
             },
-            order_date: {
-                type: DataTypes.DATE,
-                allowNull: false,
-            },
             due_date: {
                 type: DataTypes.DATE,
                 allowNull: false,
@@ -56,6 +52,10 @@ module.exports = (sequelize, DataTypes) => {
                 defaultValue: 'open',
             },
             sales_tax: {
+                type: DataTypes.FLOAT,
+                allowNull: false,
+            },
+            subtotal: {
                 type: DataTypes.FLOAT,
                 allowNull: false,
             },
