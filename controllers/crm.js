@@ -112,26 +112,25 @@ const getCustomersByTenant = async(req, res, next) => {
                 tenant_id,
             },
         });
-        console.log('before', customers)
-        const decryptedCustomers = customers.map((customer) => {
-            // Assuming 'creditCard', 'ssn', and 'otherColumn' are encrypted columns in your database
-            const decryptedCreditCard = decryptColumn(customer.cc_number, secretKey);
-            const decryptedCCCode = decryptColumn(customer.cc_security_code, secretKey);
-            const decryptedBankAccNo = decryptColumn(customer.bank_account_no, secretKey);
-            const decryptedBicSwift = decryptColumn(customer.bic_swift, secretKey);
-
-            // Include the decrypted values along with the rest of the customer data
-            return {
-                ...customer.toJSON(),
-                cc_number: decryptedCreditCard,
-                cc_security_code: decryptedCCCode,
-                bank_account_no: decryptedBankAccNo,
-                bic_swift: decryptedBicSwift,
-            };
-        });
-        console.log(customers)
-        console.log(decryptedCustomers)
-        res.status(200).send({message: 'Customers have been fetched successfully', data: decryptedCustomers});
+        // const decryptedCustomers = customers.map((customer) => {
+        //     // Assuming 'creditCard', 'ssn', and 'otherColumn' are encrypted columns in your database
+        //     const decryptedCreditCard = decryptColumn(customer.cc_number, secretKey);
+        //     const decryptedCCCode = decryptColumn(customer.cc_security_code, secretKey);
+        //     const decryptedBankAccNo = decryptColumn(customer.bank_account_no, secretKey);
+        //     const decryptedBicSwift = decryptColumn(customer.bic_swift, secretKey);
+        //
+        //     // Include the decrypted values along with the rest of the customer data
+        //     return {
+        //         ...customer.toJSON(),
+        //         cc_number: decryptedCreditCard,
+        //         cc_security_code: decryptedCCCode,
+        //         bank_account_no: decryptedBankAccNo,
+        //         bic_swift: decryptedBicSwift,
+        //     };
+        // });
+        // console.log(customers, 'AFTER')
+        // console.log(decryptedCustomers, 'DECRYPTED CUSTOMERS')
+        res.status(200).send({message: 'Customers have been fetched successfully', data: customers});
         console.log('data pushed to front')
     } catch (error) {
         res.status(500).json({ message: 'Error fetching customers' });

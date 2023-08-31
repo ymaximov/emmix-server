@@ -19,7 +19,10 @@ module.exports = {
     await queryInterface.addColumn('inventory_items', 'sales_tax', {
       type: Sequelize.ENUM('liable', 'exempt'), // Change to your original ENUM values
       allowNull: false, // adjust as needed
-      defaultValue: 'liable', // adjust as needed
+      defaultValue: 'liable' +
+          '' +
+          '' +
+          '', // adjust as needed
     });
   },
 };

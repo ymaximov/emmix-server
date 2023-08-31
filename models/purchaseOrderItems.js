@@ -8,6 +8,7 @@ module.exports = (sequelize, DataTypes) => {
             PurchaseOrderItem.belongsTo(models.purchase_orders, { foreignKey: 'po_id' });
             PurchaseOrderItem.belongsTo(models.inventory_items, { foreignKey: 'inv_item_id' });
             PurchaseOrderItem.belongsTo(models.tenants, { foreignKey: 'tenant_id' });
+            PurchaseOrderItem.belongsTo(models.inventory_items, { foreignKey: 'inv_item_id'});
         }
     }
 
