@@ -255,12 +255,47 @@ const deletePurchaseOrderItem = async (req, res) => {
     }
 };
 
+const updatePurchaseOrder = async(req, res) => {
+    const { warehouse_id, due_date, po_id } = req.body; // Get updated values from the request body
+    console.log(warehouse_id, due_date, po_id, 'REQ BODY!!')
 
+    try {
+        // Find the purchase order by its ID
+        const purchaseOrder = await models.purchase_orders.findByPk(po_id);
+
+        if (!purchaseOrder) {
+            return res.status(404).json({ error: 'Purchase order not found' });
+        }
+
+        // Update the warehouse_id and due_date properties
+        if (warehouse_id !== null) {
+            purchaseOrder.warehouse_id = warehouse_id;
+        } else {
+            purchaseOrder.warehouse_id
+        }
+        if (due_date !== undefined) {
+           purchaseOrder.due_date = due_date;
+        } else {
+            purchaseOrder.due_date
+        }
+
+
+        // Save the updated purchase order
+        await purchaseOrder.save();
+        console.log('SAVED')
+
+        return res.status(200).json({ message: 'Purchase order updated successfully', data: purchaseOrder });
+    } catch (error) {
+        console.error('Error updating purchase order:', error);
+        return res.status(500).json({ error: 'Failed to update purchase order' });
+    }
+}
 
 module.exports = {
     createPO,
     getPODataByPOID,
     addItemToPurchaseOrder,
     updatePurchaseOrderItem,
-    deletePurchaseOrderItem
+    deletePurchaseOrderItem,
+    updatePurchaseOrder
 }
