@@ -15,6 +15,7 @@ const createPO = async (req, res) => {
         const createdPurchaseOrder = await models.purchase_orders.create({
             tenant_id: purchaseOrderData.tenant_id,
             vendor_id: purchaseOrderData.vendor_id,
+            user_id: purchaseOrderData.user_id,
             warehouse_id: purchaseOrderData.warehouse_id,
             // order_date: purchaseOrderData.order_date,
             due_date: purchaseOrderData.due_date,
@@ -78,6 +79,14 @@ const getPODataByPOID = async (req, res, next) => {
                     // as: 'vendors', // Alias for the included vendor details
                 },
                 {
+                    model: models.tenants,
+                    // as: 'vendors', // Alias for the included vendor details
+                },
+                {
+                    model: models.users,
+                    // as: 'users', // Alias for the included user details
+                },
+                {
                     model: models.warehouses,
                     // as: 'warehouses', // Alias for the included warehouse details
                 },
@@ -112,10 +121,60 @@ const getPODataByPOID = async (req, res, next) => {
     }
 };
 
+const updatePurchaseOrderItem = async (req, res) => {
+    try {
+        const { itemId } = req.params; // Assuming you pass the item ID in the URL
+        const updatedItemData = req.body;
+
+        // Fetch the item from the purchase_order_items table
+        const itemToUpdate = await models.purchase_order_items.findByPk(itemId);
+
+        if (!itemToUpdate) {
+            return res.status(404).json({ error: 'Item not found' });
+        }
+
+        // Calculate the new total_price for the item
+        const newTotalPrice = updatedItemData.unit_price * updatedItemData.quantity;
+
+        // Update the item with the new data
+        await itemToUpdate.update({
+            unit_price: updatedItemData.unit_price,
+            quantity: updatedItemData.quantity,
+            total_price: newTotalPrice,
+        });
+
+        // Fetch all items for the corresponding purchase order
+        const items = await models.purchase_order_items.findAll({
+            where: { po_id: itemToUpdate.po_id },
+        });
+
+        // Calculate the new subtotal for the purchase order
+        const newSubtotal = items.reduce((subtotal, item) => subtotal + item.total_price, 0);
+
+        // Update the purchase order with the new subtotal and total_amount
+        const purchaseOrder = await models.purchase_orders.findByPk(itemToUpdate.po_id);
+        if (!purchaseOrder) {
+            return res.status(404).json({ error: 'Purchase order not found' });
+        }
+
+        await purchaseOrder.update({
+            subtotal: newSubtotal,
+            total_amount: newSubtotal + purchaseOrder.sales_tax,
+        });
+
+        res.status(200).json({ message: 'Item updated successfully', data: itemToUpdate });
+    } catch (error) {
+        console.error('Error updating purchase order item:', error);
+        res.status(500).json({ error: 'Failed to update item' });
+    }
+};
+
+
 
 
 
 module.exports = {
     createPO,
-    getPODataByPOID
+    getPODataByPOID,
+    updatePurchaseOrderItem
 }

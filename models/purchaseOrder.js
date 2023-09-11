@@ -7,6 +7,7 @@ module.exports = (sequelize, DataTypes) => {
             // Define associations here
             PurchaseOrder.belongsTo(models.tenants, { foreignKey: 'tenant_id' });
             PurchaseOrder.belongsTo(models.vendors, { foreignKey: 'vendor_id' });
+            PurchaseOrder.belongsTo(models.users, { foreignKey: 'user_id' });
             PurchaseOrder.belongsTo(models.warehouses, { foreignKey: 'warehouse_id' });
             PurchaseOrder.hasMany(models.purchase_order_items, { foreignKey: 'po_id' });
         }
@@ -33,6 +34,14 @@ module.exports = (sequelize, DataTypes) => {
                 allowNull: false,
                 references: {
                     model: 'vendors', // Replace with the actual table name if different
+                    key: 'id',
+                },
+            },
+            user_id: {
+                type: DataTypes.INTEGER,
+                allowNull: true,
+                references: {
+                    model: 'users', // Replace with the actual table name if different
                     key: 'id',
                 },
             },
