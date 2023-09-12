@@ -5,11 +5,69 @@ const moment = require('moment');
 const models = require('../models')
 const CryptoJS = require('crypto-js');
 
+// const createPO = async (req, res) => {
+//     try {
+//         const purchaseOrderData = req.body;
+//
+//         console.log(req.body, 'REQ BODY')
+//
+//         // Insert into purchaseorder table
+//         const createdPurchaseOrder = await models.purchase_orders.create({
+//             tenant_id: purchaseOrderData.tenant_id,
+//             vendor_id: purchaseOrderData.vendor_id,
+//             user_id: purchaseOrderData.user_id,
+//             warehouse_id: purchaseOrderData.warehouse_id,
+//             // order_date: purchaseOrderData.order_date,
+//             due_date: purchaseOrderData.due_date,
+//             // status: purchaseOrderData.status,
+//             sales_tax: purchaseOrderData.sales_tax,
+//             subtotal: purchaseOrderData.subtotal,
+//             total_amount: purchaseOrderData.total_amount
+//         });
+//
+//         const poId = createdPurchaseOrder.id; // Assuming your model has an 'id' field
+//
+//
+//         // Insert each item into purchaseorderitem table
+//         for (const item of purchaseOrderData.items) {
+//             const totalPrice = item.price * item.quantity;
+//            await models.purchase_order_items.create({
+//                 tenant_id: purchaseOrderData.tenant_id,
+//                 po_id: poId,
+//                 inv_item_id: item.inv_item_id,
+//                 quantity: item.quantity,
+//                 unit_price: item.price,
+//                 total_price: totalPrice
+//             });
+//         }
+//
+//         // Calculate total_amount and total_price
+//         const items = await models.purchase_order_items.findAll({
+//             where: { po_id: poId },
+//         });
+//
+//
+//
+//         // // Update the purchase order with total_amount and total_price
+//         // await createdPurchaseOrder.update({
+//         //     total_price: totalPrice,
+//         // });
+// const data = {
+//     createdPurchaseOrder, items
+// }
+//
+//         res.status(200).json({ message: 'Purchase order created successfully', data: poId})
+//     } catch (error) {
+//         console.error('Error creating purchase order:', error);
+//         res.status(500).json({ error: 'Please fill out all required data' });
+//     }
+// };
+
 const createPO = async (req, res) => {
     try {
         const purchaseOrderData = req.body;
 
-        console.log(req.body, 'REQ BODY')
+        console.log(req.body, 'REQ BODY');
 
         // Insert into purchaseorder table
         const createdPurchaseOrder = await models.purchase_orders.create({
@@ -17,9 +75,7 @@ const createPO = async (req, res) => {
             vendor_id: purchaseOrderData.vendor_id,
             user_id: purchaseOrderData.user_id,
             warehouse_id: purchaseOrderData.warehouse_id,
-            // order_date: purchaseOrderData.order_date,
             due_date: purchaseOrderData.due_date,
-            // status: purchaseOrderData.status,
             sales_tax: purchaseOrderData.sales_tax,
             subtotal: purchaseOrderData.subtotal,
             total_amount: purchaseOrderData.total_amount
@@ -27,11 +83,10 @@ const createPO = async (req, res) => {
 
         const poId = createdPurchaseOrder.id; // Assuming your model has an 'id' field
 
-
-        // Insert each item into purchaseorderitem table
+        // Insert each item into purchaseorderitem table and update inventory if needed
         for (const item of purchaseOrderData.items) {
             const totalPrice = item.price * item.quantity;
-           await models.purchase_order_items.create({
+            await models.purchase_order_items.create({
                 tenant_id: purchaseOrderData.tenant_id,
                 po_id: poId,
                 inv_item_id: item.inv_item_id,
@@ -39,29 +94,58 @@ const createPO = async (req, res) => {
                 unit_price: item.price,
                 total_price: totalPrice
             });
+
+            // Check if inventory_item is true for the item_id in the 'inventory_items' table
+            const inventoryItem = await models.inventory_items.findOne({
+                where: { id: item.inv_item_id, inventory_item: true }
+            });
+
+            if (inventoryItem) {
+                // Check if an inventory record already exists for the warehouse_id
+                const existingInventory = await models.inventories.findOne({
+                    where: {
+                        item_id: item.inv_item_id,
+                        warehouse_id: purchaseOrderData.warehouse_id
+                    }
+                });
+
+                if (existingInventory) {
+                    // Update the existing inventory by adding the new quantity
+                    await models.inventories.update(
+                        {
+                            quantity: existingInventory.quantity + item.quantity
+                        },
+                        {
+                            where: {
+                                item_id: item.inv_item_id,
+                                warehouse_id: purchaseOrderData.warehouse_id
+                            }
+                        }
+                    );
+                } else {
+                    // Create a new inventory record for the warehouse
+                    await models.inventories.create({
+                        tenant_id: purchaseOrderData.tenant_id,
+                        warehouse_id: purchaseOrderData.warehouse_id,
+                        item_id: item.inv_item_id,
+                        quantity: item.quantity
+                    });
+                }
+            }
         }
 
-        // Calculate total_amount and total_price
-        const items = await models.purchase_order_items.findAll({
-            where: { po_id: poId },
-        });
+        const data = {
+            createdPurchaseOrder,
+            items: purchaseOrderData.items
+        };
 
-
-
-        // // Update the purchase order with total_amount and total_price
-        // await createdPurchaseOrder.update({
-        //     total_price: totalPrice,
-        // });
-const data = {
-    createdPurchaseOrder, items
-}
-
-        res.status(200).json({ message: 'Purchase order created successfully', data: poId})
+        res.status(200).json({ message: 'Purchase order created successfully', data: poId });
     } catch (error) {
         console.error('Error creating purchase order:', error);
         res.status(500).json({ error: 'Please fill out all required data' });
     }
 };
+
 
 const getPODataByPOID = async (req, res, next) => {
     const po_id = req.params.id; // Assuming you have a route parameter for po_id
