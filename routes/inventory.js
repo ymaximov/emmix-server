@@ -13,7 +13,7 @@ router.get('/get-manufacturers/:id', auth, inventoryController.getManufacturers)
 router.post('/add-new-inventory-item', auth, inventoryController.addItem)
 router.get('/get-inventory-by-tenant-id/:id', auth,  inventoryController.getInventory)
 router.put('/update-inventory-item',  auth, inventoryController.updateInventoryItem)
-router.get('/get-stock-data-by-item-id/:id', auth, inventoryController.getStockData)
+router.get('/get-stock-data-by-item-id', auth, inventoryController.getStockData)
 
 
 module.exports = router

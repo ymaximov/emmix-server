@@ -167,12 +167,14 @@ const updateInventoryItem = async(req, res, next) => {
 }
 
 const getStockData = async (req, res) => {
-    const item_id = req.params.id;
+    const { item_id, tenant_id } = req.query;
+    console.log(req.query, 'Req query')
 
     try {
         // Fetch all stock data for the given item_id
         const inventoryData = await models.inventories.findAll({
             where: {
+                tenant_id,
                 item_id,
             },
             include: [
