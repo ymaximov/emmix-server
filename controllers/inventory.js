@@ -135,6 +135,11 @@ const getInventory = async(req, res, next) => {
     }
 }
 
+
+
+
+
+
 const updateInventoryItem = async(req, res, next) => {
     const {id, tenant_id} = req.body
     console.log(id, 'IDDD')
@@ -161,6 +166,28 @@ const updateInventoryItem = async(req, res, next) => {
     }
 }
 
+const getStockData = async (req, res) => {
+    const item_id = req.params.id;
+
+    try {
+        // Fetch all stock data for the given item_id
+        const inventoryData = await models.inventories.findAll({
+            where: {
+                item_id,
+            },
+        });
+
+        // Return the inventory data as JSON response
+        res.status(200).json({
+            message: 'Inventory Data Fetched Successfully',
+            data: inventoryData,
+        });
+    } catch (error) {
+        console.error('Error fetching inventory data:', error);
+        res.status(500).json({ message: 'Error fetching inventory data' });
+    }
+}
+
 module.exports = {
     getVendors,
     getItemGroups,
@@ -169,5 +196,6 @@ module.exports = {
     getWarehouses,
     addItem,
     getInventory,
-    updateInventoryItem
+    updateInventoryItem,
+    getStockData
 }
