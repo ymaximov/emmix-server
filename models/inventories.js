@@ -45,7 +45,19 @@ module.exports = (sequelize, DataTypes) => {
             onUpdate: 'CASCADE',
             onDelete: 'SET NULL'
         },
-        quantity: {
+        ordered: {
+            type: DataTypes.INTEGER,
+            allowNull: true
+        },
+        committed: {
+            type: DataTypes.INTEGER,
+            allowNull: true
+        },
+        in_stock: {
+            type: DataTypes.INTEGER,
+            allowNull: true
+        },
+        available: {
             type: DataTypes.INTEGER,
             allowNull: true
         },

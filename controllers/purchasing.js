@@ -113,7 +113,7 @@ const createPO = async (req, res) => {
                     // Update the existing inventory by adding the new quantity
                     await models.inventories.update(
                         {
-                            quantity: existingInventory.quantity + item.quantity
+                            ordered: existingInventory.ordered + item.ordered
                         },
                         {
                             where: {
@@ -128,7 +128,7 @@ const createPO = async (req, res) => {
                         tenant_id: purchaseOrderData.tenant_id,
                         warehouse_id: purchaseOrderData.warehouse_id,
                         item_id: item.inv_item_id,
-                        quantity: item.quantity
+                        ordered: item.quantity
                     });
                 }
             }
