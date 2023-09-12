@@ -175,6 +175,12 @@ const getStockData = async (req, res) => {
             where: {
                 item_id,
             },
+            include: [
+                {
+                    model: models.warehouses, // Include the warehouses table
+                    attributes: ['warehouse_name'], // Specify the columns to include
+                },
+            ],
         });
 
         // Return the inventory data as JSON response
