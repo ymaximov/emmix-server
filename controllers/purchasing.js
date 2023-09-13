@@ -208,11 +208,11 @@ const getPODataByPOID = async (req, res, next) => {
         console.error(error, 'ERROR');
     }
 };
-
 const addItemToPurchaseOrder = async (req, res) => {
     try {
-        const purchaseOrderId = req.body.po_id; // Assuming you pass the purchase order ID in the URL
+        const purchaseOrderId = req.body.po_id;
         const newItemData = req.body;
+        console.log(req.body, 'Req Body')
 
         // Calculate the total_price for the new item
         const newItemTotalPrice = newItemData.unit_price * newItemData.quantity;
@@ -226,6 +226,7 @@ const addItemToPurchaseOrder = async (req, res) => {
             unit_price: newItemData.unit_price,
             total_price: newItemTotalPrice,
         });
+        console.log('crreated PO Item')
 
         // Fetch all items for the corresponding purchase order
         const items = await models.purchase_order_items.findAll({
@@ -245,6 +246,42 @@ const addItemToPurchaseOrder = async (req, res) => {
             subtotal: newSubtotal,
             total_amount: newSubtotal + purchaseOrder.sales_tax,
         });
+        console.log('updated subtotal')
+
+        // Check if the item exists in the inventories table for the specific warehouse
+        const inventoryItem = await models.inventory_items.findOne({
+            where: {
+                tenant_id: newItemData.tenant_id,
+                id: newItemData.inv_item_id,
+            },
+        });
+
+        if (inventoryItem && inventoryItem.inventory_item) {
+            // Item is an inventory item, add/update data in the inventories table
+            const inventoryData = await models.inventories.findOne({
+                where: {
+                    tenant_id: newItemData.tenant_id,
+                    item_id: newItemData.inv_item_id,
+                    warehouse_id: newItemData.warehouse_id,
+                },
+            });
+
+            if (inventoryData) {
+                // Item exists in inventories, update the quantity
+                await inventoryData.update({
+                    quantity: inventoryData.quantity + newItemData.quantity,
+                });
+            } else {
+                // Item doesn't exist in inventories, create a new entry
+                await models.inventories.create({
+                    tenant_id: newItemData.tenant_id,
+                    item_id: newItemData.inv_item_id,
+                    warehouse_id: newItemData.warehouse_id,
+                    ordered: newItemData.quantity,
+                    // Other columns as needed
+                });
+            }
+        }
 
         res.status(200).json({ message: 'Item added to purchase order successfully', data: createdItem });
     } catch (error) {
@@ -253,38 +290,37 @@ const addItemToPurchaseOrder = async (req, res) => {
     }
 };
 
-// const updatePurchaseOrderItem = async (req, res) => {
+
+
+// const addItemToPurchaseOrder = async (req, res) => {
 //     try {
-//         const itemId = req.body.line_item_id; // Assuming you pass the item ID in the URL
-//         const updatedItemData = req.body;
+//         const purchaseOrderId = req.body.po_id; // Assuming you pass the purchase order ID in the URL
+//         const newItemData = req.body;
+//         console.log(req.body, 'req body')
 //
-//         // Fetch the item from the purchase_order_items table
-//         const itemToUpdate = await models.purchase_order_items.findByPk(itemId);
+//         // Calculate the total_price for the new item
+//         const newItemTotalPrice = newItemData.unit_price * newItemData.quantity;
 //
-//         if (!itemToUpdate) {
-//             return res.status(404).json({ error: 'Item not found' });
-//         }
-//
-//         // Calculate the new total_price for the item
-//         const newTotalPrice = updatedItemData.unit_price * updatedItemData.quantity;
-//
-//         // Update the item with the new data
-//         await itemToUpdate.update({
-//             unit_price: updatedItemData.unit_price,
-//             quantity: updatedItemData.quantity,
-//             total_price: newTotalPrice,
+//         // Insert the new item into the purchase_order_items table
+//         const createdItem = await models.purchase_order_items.create({
+//             tenant_id: newItemData.tenant_id,
+//             po_id: purchaseOrderId,
+//             inv_item_id: newItemData.inv_item_id,
+//             quantity: newItemData.quantity,
+//             unit_price: newItemData.unit_price,
+//             total_price: newItemTotalPrice,
 //         });
 //
 //         // Fetch all items for the corresponding purchase order
 //         const items = await models.purchase_order_items.findAll({
-//             where: { po_id: itemToUpdate.po_id },
+//             where: { po_id: purchaseOrderId },
 //         });
 //
 //         // Calculate the new subtotal for the purchase order
 //         const newSubtotal = items.reduce((subtotal, item) => subtotal + item.total_price, 0);
 //
 //         // Update the purchase order with the new subtotal and total_amount
-//         const purchaseOrder = await models.purchase_orders.findByPk(itemToUpdate.po_id);
+//         const purchaseOrder = await models.purchase_orders.findByPk(purchaseOrderId);
 //         if (!purchaseOrder) {
 //             return res.status(404).json({ error: 'Purchase order not found' });
 //         }
@@ -294,96 +330,120 @@ const addItemToPurchaseOrder = async (req, res) => {
 //             total_amount: newSubtotal + purchaseOrder.sales_tax,
 //         });
 //
-//         res.status(200).json({ message: 'Item updated successfully', data: itemToUpdate });
+//         // Check if the item exists in the inventories table for the specific warehouse
+//         const inventoryItem = await models.inventories.findOne({
+//             where: {
+//                 tenant_id: newItemData.tenant_id,
+//                 item_id: newItemData.inv_item_id,
+//                 warehouse_id: newItemData.warehouse_id,
+//             },
+//         });
+//
+//         if (inventoryItem) {
+//             // Item exists in inventories, update the quantity
+//             await inventoryItem.update({
+//                 quantity: inventoryItem.quantity + newItemData.quantity,
+//             });
+//         } else {
+//             // Item doesn't exist in inventories, create a new entry
+//             await models.inventories.create({
+//                 tenant_id: newItemData.tenant_id,
+//                 item_id: newItemData.inv_item_id,
+//                 warehouse_id: newItemData.warehouse_id,
+//                 ordered: newItemData.quantity,
+//                 // Other columns as needed
+//             });
+//         }
+//
+//         res.status(200).json({ message: 'Item added to purchase order successfully', data: createdItem });
 //     } catch (error) {
-//         console.error('Error updating purchase order item:', error);
-//         res.status(500).json({ error: 'Failed to update item' });
+//         console.error('Error adding item to purchase order:', error);
+//         res.status(500).json({ error: 'Failed to add item to purchase order' });
 //     }
 // };
-// ...
+
+
+
 
 // const updatePurchaseOrderItem = async (req, res) => {
 //     try {
 //         const itemId = req.body.item_id;
-//         const inv_item_id = req.body.inv_item_id
+//         const invItemId = req.body.inv_item_id;
 //         const updatedItemData = req.body;
-//         console.log(updatedItemData, 'Updated Item Data')
+//         console.log(updatedItemData, 'Updated Item Data');
 //
-//         // Fetch the item from the purchase_order_items table
-//         const itemToUpdate = await models.purchase_order_items.findByPk(itemId, {
+//         // Fetch the purchase order item for the specific item and purchase order
+//         const purchaseOrderItem = await models.purchase_order_items.findOne({
+//             where: {
+//                 id: itemId,
+//             },
 //             include: [
 //                 {
-//                     model: models.purchase_orders, // Include the purchase_orders table
+//                     model: models.purchase_orders,
+//                     where: {
+//                         status: 'open',
+//                     },
 //                 },
 //             ],
 //         });
 //
-//         if (!itemToUpdate) {
-//             return res.status(404).json({ error: 'Item not found' });
+//         if (!purchaseOrderItem) {
+//             return res.status(404).json({ error: 'Purchase order item not found' });
 //         }
 //
-//         // Calculate the new total_price for the item
+//         // Calculate the new total_price for the purchase order item
 //         const newTotalPrice = updatedItemData.unit_price * updatedItemData.quantity;
 //
-//         // Update the item with the new data
-//         await itemToUpdate.update({
+//         // Update the purchase order item with the new data
+//         await purchaseOrderItem.update({
 //             unit_price: updatedItemData.unit_price,
 //             quantity: updatedItemData.quantity,
 //             total_price: newTotalPrice,
 //         });
 //
-//         // Fetch all items for the corresponding purchase order
-//         const items = await models.purchase_order_items.findAll({
-//             where: { po_id: itemToUpdate.po_id },
+//         // Fetch all purchase order items for the specific item
+//         const purchaseOrderItems = await models.purchase_order_items.findAll({
+//             where: {
+//                 inv_item_id: invItemId,
+//             },
 //             include: [
 //                 {
-//                     model: models.purchase_orders, // Include the purchase_orders table
+//                     model: models.purchase_orders,
+//                     where: {
+//                         status: 'open',
+//                     },
 //                 },
 //             ],
 //         });
 //
-//         // Calculate the new subtotal for the purchase order
-//         const newSubtotal = items.reduce((subtotal, item) => subtotal + item.total_price, 0);
-//
-//         // Update the purchase order with the new subtotal and total_amount
-//         const purchaseOrder = await models.purchase_orders.findByPk(itemToUpdate.po_id);
-//         if (!purchaseOrder) {
-//             return res.status(404).json({ error: 'Purchase order not found' });
-//         }
-//
-//         await purchaseOrder.update({
-//             subtotal: newSubtotal,
-//             total_amount: newSubtotal + purchaseOrder.sales_tax,
-//         });
-//
-//         // Calculate the total quantity in all purchase orders with a status of "open" for the specific item
-//         const totalQuantityInOpenPurchaseOrders = items
-//             .filter((item) => item.purchase_order.status === 'open')
-//             .reduce((totalQuantity, item) => totalQuantity + item.quantity, 0);
+//         // Calculate the total ordered quantity from all open purchase orders for the specific item
+//         const totalOrderedQuantity = purchaseOrderItems.reduce((totalQuantity, item) => {
+//             // Add the quantity of the item in this purchase order item to the total
+//             return totalQuantity + item.quantity;
+//         }, 0);
 //
 //         // Fetch the current quantity from the inventories table for the specific item and warehouse
-//         const { tenant_id, item_id, warehouse_id } = updatedItemData;
+//         const { tenant_id, warehouse_id } = updatedItemData;
 //
 //         const inventoryData = await models.inventories.findOne({
 //             where: {
 //                 tenant_id,
-//                 item_id: inv_item_id,
+//                 item_id: invItemId,
 //                 warehouse_id,
 //             },
 //         });
 //
 //         if (!inventoryData) {
 //             return res.status(404).json({ error: 'Inventory data not found' });
-//             console.log('item not found')
 //         }
 //
-//         // Adjust the "ordered" column in the inventories table with the calculated total quantity
+//         // Update the "ordered" column in the inventories table with the calculated total ordered quantity
 //         await inventoryData.update({
-//             ordered: totalQuantityInOpenPurchaseOrders,
+//             ordered: totalOrderedQuantity,
 //         });
 //
-//         console.log('updated total quantity')
-//         res.status(200).json({ message: 'Item updated successfully', data: itemToUpdate });
+//         console.log('updated ordered quantity');
+//         res.status(200).json({ message: 'Item updated successfully' });
 //     } catch (error) {
 //         console.error('Error updating purchase order item:', error);
 //         res.status(500).json({ error: 'Failed to update item' });
@@ -447,34 +507,44 @@ const updatePurchaseOrderItem = async (req, res) => {
             return totalQuantity + item.quantity;
         }, 0);
 
-        // Fetch the current quantity from the inventories table for the specific item and warehouse
-        const { tenant_id, warehouse_id } = updatedItemData;
-
-        const inventoryData = await models.inventories.findOne({
+        // Check if the item is an inventory item
+        const inventoryItem = await models.inventory_items.findOne({
             where: {
-                tenant_id,
-                item_id: invItemId,
-                warehouse_id,
+                id: invItemId,
+                inventory_item: true, // Check if it's an inventory item
             },
         });
 
-        if (!inventoryData) {
-            return res.status(404).json({ error: 'Inventory data not found' });
+        if (inventoryItem) {
+            // Fetch the current quantity from the inventories table for the specific item and warehouse
+            const { tenant_id, warehouse_id } = updatedItemData;
+
+            const inventoryData = await models.inventories.findOne({
+                where: {
+                    tenant_id,
+                    item_id: invItemId,
+                    warehouse_id,
+                },
+            });
+
+            if (!inventoryData) {
+                return res.status(404).json({ error: 'Inventory data not found' });
+            }
+
+            // Update the "ordered" column in the inventories table with the calculated total ordered quantity
+            await inventoryData.update({
+                ordered: totalOrderedQuantity,
+            });
+
+            console.log('updated ordered quantity');
         }
 
-        // Update the "ordered" column in the inventories table with the calculated total ordered quantity
-        await inventoryData.update({
-            ordered: totalOrderedQuantity,
-        });
-
-        console.log('updated ordered quantity');
         res.status(200).json({ message: 'Item updated successfully' });
     } catch (error) {
         console.error('Error updating purchase order item:', error);
         res.status(500).json({ error: 'Failed to update item' });
     }
 };
-
 
 
 
