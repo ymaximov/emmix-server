@@ -725,7 +725,78 @@ const updatePurchaseOrder = async(req, res) => {
         console.error('Error updating purchase order:', error);
         return res.status(500).json({ error: 'Failed to update purchase order' });
     }
+
+    const getPurchaseOrdersByTenant = async (req, res) => {
+        try {
+            const tenantId = req.params.tenantId; // Assuming you pass the tenant ID in the URL
+
+            // Fetch all purchase orders for the specific tenant and include related data
+            const purchaseOrders = await models.purchase_orders.findAll({
+                where: {
+                    tenant_id: tenantId,
+                },
+                include: [
+                    {
+                        model: models.warehouses, // Include the related warehouses data
+                        attributes: ['warehouse_name'], // Specify the columns to include
+                    },
+                    {
+                        model: models.vendors, // Include the related vendors data
+                        attributes: ['vendor_name'], // Specify the columns to include
+                    },
+                ],
+            });
+
+            // Return the purchase orders data as JSON response
+            res.status(200).json({
+                message: 'Purchase Orders Fetched Successfully',
+                data: purchaseOrders,
+            });
+        } catch (error) {
+            console.error('Error fetching purchase orders:', error);
+            res.status(500).json({ message: 'Error fetching purchase orders' });
+        }
+    };
+
 }
+
+const getPurchaseOrdersByTenant = async (req, res) => {
+    try {
+        const tenantId = req.params.id
+        console.log(tenantId, 'TENANT ID'); // Assuming you pass the tenant ID in the URL
+
+        // Fetch all purchase orders for the specific tenant and include related data
+        const purchaseOrders = await models.purchase_orders.findAll({
+            where: {
+                tenant_id: tenantId,
+            },
+            include: [
+                {
+                    model: models.warehouses, // Include the related warehouses data
+                    attributes: ['warehouse_name'], // Specify the columns to include
+                },
+                {
+                    model: models.vendors, // Include the related vendors data
+                    attributes: ['company_name'], // Specify the columns to include
+                },
+                {
+                    model: models.users, // Include the related users data
+                    attributes: ['first_name', 'last_name', 'email'], // Specify the columns to include
+                },
+            ],
+        });
+
+        // Return the purchase orders data as JSON response
+        res.status(200).json({
+            message: 'Purchase Orders Fetched Successfully',
+            data: purchaseOrders,
+        });
+    } catch (error) {
+        console.error('Error fetching purchase orders:', error);
+        res.status(500).json({ message: 'Error fetching purchase orders' });
+    }
+};
+
 
 module.exports = {
     createPO,
@@ -733,5 +804,6 @@ module.exports = {
     addItemToPurchaseOrder,
     updatePurchaseOrderItem,
     deletePurchaseOrderItem,
-    updatePurchaseOrder
+    updatePurchaseOrder,
+getPurchaseOrdersByTenant
 }
