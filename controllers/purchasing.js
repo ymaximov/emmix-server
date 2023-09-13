@@ -550,12 +550,15 @@ const updatePurchaseOrderItem = async (req, res) => {
 
 
 
+
+
 // const deletePurchaseOrderItem = async (req, res) => {
 //     try {
-//         const itemId  = req.params.id; // Assuming you pass the item ID in the URL
-//         console.log(itemId, 'ITEM ID')
-//
+//         console.log('Start')
+//         // const itemId = req.params.id; // Assuming you pass the item ID in the URL
+//         const { quantity, inv_item_id, warehouse_id, tenant_id, itemId } = req.query; // Quantity and other relevant data
 //         // Fetch the item from the purchase_order_items table
+//         console.log(quantity, inv_item_id, warehouse_id, tenant_id, req.query, 'PARAMS')
 //         const itemToDelete = await models.purchase_order_items.findByPk(itemId);
 //
 //         if (!itemToDelete) {
@@ -584,8 +587,30 @@ const updatePurchaseOrderItem = async (req, res) => {
 //             total_amount: newSubtotal + purchaseOrder.sales_tax,
 //         });
 //
+//         // Subtract the quantity from the "ordered" column in the inventories table
+//         const inventoryData = await models.inventories.findOne({
+//             where: {
+//                 tenant_id,
+//                 item_id: inv_item_id,
+//                 warehouse_id,
+//             },
+//         });
+//
+//         if (!inventoryData) {
+//             return res.status(404).json({ error: 'Inventory data not found' });
+//         }
+//
+//         // Ensure that the quantity to subtract does not exceed the current "ordered" quantity
+//         const newOrderedQuantity = Math.max(0, inventoryData.ordered - quantity);
+//
+//         // Update the "ordered" column in the inventories table
+//         await inventoryData.update({
+//             ordered: newOrderedQuantity,
+//         });
+//
 //         res.status(200).json({ message: 'Item deleted successfully' });
 //     } catch (error) {
+//         console.log('there was an error')
 //         console.error('Error deleting purchase order item:', error);
 //         res.status(500).json({ error: 'Failed to delete item' });
 //     }
@@ -593,11 +618,10 @@ const updatePurchaseOrderItem = async (req, res) => {
 
 const deletePurchaseOrderItem = async (req, res) => {
     try {
-        console.log('Start')
-        // const itemId = req.params.id; // Assuming you pass the item ID in the URL
+        console.log('Start');
         const { quantity, inv_item_id, warehouse_id, tenant_id, itemId } = req.query; // Quantity and other relevant data
         // Fetch the item from the purchase_order_items table
-        console.log(quantity, inv_item_id, warehouse_id, tenant_id, req.query, 'PARAMS')
+        console.log(quantity, inv_item_id, warehouse_id, tenant_id, req.query, 'PARAMS');
         const itemToDelete = await models.purchase_order_items.findByPk(itemId);
 
         if (!itemToDelete) {
@@ -625,35 +649,46 @@ const deletePurchaseOrderItem = async (req, res) => {
             subtotal: newSubtotal,
             total_amount: newSubtotal + purchaseOrder.sales_tax,
         });
-
-        // Subtract the quantity from the "ordered" column in the inventories table
-        const inventoryData = await models.inventories.findOne({
+        console.log('PO UPDATEED')
+        // Check if the item is an inventory item
+        const inventoryItem = await models.inventory_items.findOne({
             where: {
-                tenant_id,
-                item_id: inv_item_id,
-                warehouse_id,
+                id: inv_item_id,
+                inventory_item: true, // Check if it's an inventory item
             },
         });
 
-        if (!inventoryData) {
-            return res.status(404).json({ error: 'Inventory data not found' });
+        if (inventoryItem) {
+            // Subtract the quantity from the "ordered" column in the inventories table
+            const inventoryData = await models.inventories.findOne({
+                where: {
+                    tenant_id,
+                    item_id: inv_item_id,
+                    warehouse_id,
+                },
+            });
+
+            if (!inventoryData) {
+                return res.status(404).json({ error: 'Inventory data not found' });
+            }
+
+            // Ensure that the quantity to subtract does not exceed the current "ordered" quantity
+            const newOrderedQuantity = Math.max(0, inventoryData.ordered - quantity);
+
+            // Update the "ordered" column in the inventories table
+            await inventoryData.update({
+                ordered: newOrderedQuantity,
+            });
         }
-
-        // Ensure that the quantity to subtract does not exceed the current "ordered" quantity
-        const newOrderedQuantity = Math.max(0, inventoryData.ordered - quantity);
-
-        // Update the "ordered" column in the inventories table
-        await inventoryData.update({
-            ordered: newOrderedQuantity,
-        });
 
         res.status(200).json({ message: 'Item deleted successfully' });
     } catch (error) {
-        console.log('there was an error')
+        console.log('there was an error');
         console.error('Error deleting purchase order item:', error);
         res.status(500).json({ error: 'Failed to delete item' });
     }
 };
+
 
 
 const updatePurchaseOrder = async(req, res) => {
