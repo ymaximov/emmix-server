@@ -797,6 +797,103 @@ const getPurchaseOrdersByTenant = async (req, res) => {
     }
 };
 
+const convertPOToGoodsReceipt = async (req, res) => {
+    const transaction = await models.sequelize.transaction();
+
+    try {
+        const { poNo, tenant_id, user_id } = req.body;
+
+        // Find the purchase order by its primary key and include associations
+        const purchaseOrder = await models.purchase_orders.findOne({
+            where: {
+                id: poNo,
+                tenant_id,
+                status: 'open',
+            },
+            include: [
+                {
+                    model: models.warehouses,
+                    attributes: ['id'],
+                },
+                {
+                    model: models.users,
+                    attributes: ['id'],
+                },
+            ],
+        });
+
+        if (!purchaseOrder) {
+            await transaction.rollback();
+            return res.status(404).json({ message: 'No open purchase orders found' });
+        }
+
+        // Insert data into the goods_receipts table
+        const goodsReceipt = await models.goods_receipts.create(
+            {
+                tenant_id,
+                warehouse_id: purchaseOrder.warehouse.id,
+                vendor_id: purchaseOrder.vendor_id,
+                po_id: poNo,
+                user_id: user_id,
+            },
+            { transaction }
+        );
+
+        // Fetch associated items for the purchase order, including the inventory_items data
+        const items = await models.purchase_order_items.findAll({
+            where: {
+                po_id: poNo,
+                tenant_id,
+            },
+            include: [
+                {
+                    model: models.inventory_items,
+                    attributes: ['id', 'item_name', 'manuf_sku', 'barcode'],
+                },
+            ],
+        });
+
+        // Create goods_receipt_items for each item
+        for (const item of items) {
+            await models.goods_receipt_items.create(
+                {
+                    tenant_id,
+                    goods_receipt_id: goodsReceipt.id,
+                    inv_item_id: item.inventory_item.id,
+                    quantity: item.quantity,
+                },
+                { transaction }
+            );
+        }
+
+        await transaction.commit();
+
+        // Build the response object with just the goodsReceipt and its items
+        const response = {
+            message: 'Goods Receipt Created Successfully',
+            data: {
+                goodsReceipt: {
+                    ...goodsReceipt.toJSON(),
+                    items: items.map((item) => ({
+                        ...item.toJSON(),
+                        inventory_item: item.inventory_item,
+                    })),
+                },
+            },
+        };
+
+        res.status(200).json(response);
+    } catch (error) {
+        console.error('Error fetching purchase order data, creating goods receipt, or goods receipt items:', error);
+
+        await transaction.rollback();
+
+        res.status(500).json({ message: 'Error fetching purchase order data, creating goods receipt, or goods receipt items' });
+    }
+};
+
+
+
 
 module.exports = {
     createPO,
@@ -805,5 +902,6 @@ module.exports = {
     updatePurchaseOrderItem,
     deletePurchaseOrderItem,
     updatePurchaseOrder,
+    convertPOToGoodsReceipt,
 getPurchaseOrdersByTenant
 }
