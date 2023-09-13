@@ -816,12 +816,26 @@ const convertPOToGoodsReceipt = async (req, res) => {
         if (existingGoodsReceipt) {
             goodsReceipt = existingGoodsReceipt;
         } else {
-            // If no existing goods receipt found, create a new one
+            // Fetch the purchase order details to get warehouse_id and vendor_id
+            const purchaseOrder = await models.purchase_orders.findOne({
+                where: {
+                    id: poNo,
+                    tenant_id,
+                    status: 'open',
+                },
+            });
+
+            if (!purchaseOrder) {
+                await transaction.rollback();
+                return res.status(404).json({ message: 'No open purchase orders found' });
+            }
+
+            // Create a new goods receipt and use warehouse_id and vendor_id from the purchase order
             goodsReceipt = await models.goods_receipts.create(
                 {
                     tenant_id,
-                    warehouse_id: null, // Replace with the appropriate warehouse_id
-                    vendor_id: null, // Replace with the appropriate vendor_id
+                    warehouse_id: purchaseOrder.warehouse_id,
+                    vendor_id: purchaseOrder.vendor_id,
                     po_id: poNo,
                     user_id: user_id,
                 },

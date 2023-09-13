@@ -10,6 +10,6 @@ router.put('/update-line-item', auth, purchasingController.updatePurchaseOrderIt
 router.delete('/delete-line-item', auth, purchasingController.deletePurchaseOrderItem)
 router.put('/update-po', auth, purchasingController.updatePurchaseOrder)
 router.get('/get-all-po-by-tenant/:id', auth, purchasingController.getPurchaseOrdersByTenant)
-router.post('/get-po-by-id', auth, purchasingController.convertPOToGoodsReceipt)
+router.post('/get-po-data-for-gr', auth, purchasingController.convertPOToGoodsReceipt)
 
 module.exports = router
