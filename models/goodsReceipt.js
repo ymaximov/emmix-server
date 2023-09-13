@@ -7,7 +7,8 @@ module.exports = (sequelize, DataTypes) => {
             // Define associations here
             GoodsReceipt.belongsTo(models.tenants, { foreignKey: 'tenant_id' });
             GoodsReceipt.belongsTo(models.vendors, { foreignKey: 'vendor_id' });
-            GoodsReceipt.belongsTo(models.users, { foreignKey: 'user_id' });
+            GoodsReceipt.belongsTo(models.users, { foreignKey: 'receiver_id' });
+            GoodsReceipt.belongsTo(models.users, { foreignKey: 'buyer_id' });
             GoodsReceipt.belongsTo(models.warehouses, { foreignKey: 'warehouse_id' });
             GoodsReceipt.belongsTo(models.purchase_orders, { foreignKey: 'po_id' });
             GoodsReceipt.hasMany(models.goods_receipt_items, { foreignKey: 'goods_receipt_id' });
@@ -38,7 +39,15 @@ module.exports = (sequelize, DataTypes) => {
                     key: 'id',
                 },
             },
-            user_id: {
+            receiver_id: {
+                type: DataTypes.INTEGER,
+                allowNull: true,
+                references: {
+                    model: 'users', // Replace with the actual table name if different
+                    key: 'id',
+                },
+            },
+            buyer_id: {
                 type: DataTypes.INTEGER,
                 allowNull: true,
                 references: {

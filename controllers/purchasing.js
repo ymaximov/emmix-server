@@ -797,11 +797,13 @@ const getPurchaseOrdersByTenant = async (req, res) => {
     }
 };
 
+
+
 const convertPOToGoodsReceipt = async (req, res) => {
     const transaction = await models.sequelize.transaction();
 
     try {
-        const { poNo, tenant_id, user_id } = req.body;
+        const { poNo, tenant_id, receiver_id } = req.body;
 
         // Find an existing goods receipt for the given purchase order (po_id)
         const existingGoodsReceipt = await models.goods_receipts.findOne({
@@ -809,6 +811,29 @@ const convertPOToGoodsReceipt = async (req, res) => {
                 po_id: poNo,
                 tenant_id,
             },
+            include: [
+                {
+                    model: models.purchase_orders,
+                    attributes: ['user_id', 'warehouse_id', 'vendor_id'],
+                    where: {
+                        status: 'open',
+                    },
+                    include: [
+                        {
+                            model: models.warehouses,
+                            attributes: ['warehouse_name'],
+                        },
+                        {
+                            model: models.vendors,
+                            attributes: ['company_name', 'first_name', 'last_name', 'contact_phone', 'email'],
+                        },
+                        {
+                            model: models.users,
+                            attributes: ['first_name', 'last_name'],
+                        },
+                    ],
+                },
+            ],
         });
 
         let goodsReceipt;
@@ -816,7 +841,7 @@ const convertPOToGoodsReceipt = async (req, res) => {
         if (existingGoodsReceipt) {
             goodsReceipt = existingGoodsReceipt;
         } else {
-            // Fetch the purchase order details to get warehouse_id and vendor_id
+            // Create a new goods receipt and use warehouse_id and vendor_id from the purchase order
             const purchaseOrder = await models.purchase_orders.findOne({
                 where: {
                     id: poNo,
@@ -830,14 +855,14 @@ const convertPOToGoodsReceipt = async (req, res) => {
                 return res.status(404).json({ message: 'No open purchase orders found' });
             }
 
-            // Create a new goods receipt and use warehouse_id and vendor_id from the purchase order
             goodsReceipt = await models.goods_receipts.create(
                 {
                     tenant_id,
                     warehouse_id: purchaseOrder.warehouse_id,
                     vendor_id: purchaseOrder.vendor_id,
                     po_id: poNo,
-                    user_id: user_id,
+                    receiver_id,
+                    buyer_id: purchaseOrder.user_id,
                 },
                 { transaction }
             );
@@ -872,7 +897,7 @@ const convertPOToGoodsReceipt = async (req, res) => {
 
         await transaction.commit();
 
-        // Build the response object with the goodsReceipt and its items
+        // Build the response object with the goodsReceipt, purchase_order, and user details
         const response = {
             message: 'Goods Receipt Created or Fetched Successfully',
             data: {
@@ -900,7 +925,15 @@ const convertPOToGoodsReceipt = async (req, res) => {
 
 
 
-module.exports = {
+
+
+
+
+
+
+
+
+                module.exports = {
     createPO,
     getPODataByPOID,
     addItemToPurchaseOrder,
