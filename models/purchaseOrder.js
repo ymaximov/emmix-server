@@ -78,6 +78,10 @@ module.exports = (sequelize, DataTypes) => {
                 allowNull: false,
                 defaultValue: false
             },
+            reference: {
+                type: DataTypes.STRING,
+                allowNull: true,
+            },
             createdAt: {
                 allowNull: false,
                 type: DataTypes.DATE,
