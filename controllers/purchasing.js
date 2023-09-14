@@ -292,163 +292,11 @@ const addItemToPurchaseOrder = async (req, res) => {
 
 
 
-// const addItemToPurchaseOrder = async (req, res) => {
-//     try {
-//         const purchaseOrderId = req.body.po_id; // Assuming you pass the purchase order ID in the URL
-//         const newItemData = req.body;
-//         console.log(req.body, 'req body')
-//
-//         // Calculate the total_price for the new item
-//         const newItemTotalPrice = newItemData.unit_price * newItemData.quantity;
-//
-//         // Insert the new item into the purchase_order_items table
-//         const createdItem = await models.purchase_order_items.create({
-//             tenant_id: newItemData.tenant_id,
-//             po_id: purchaseOrderId,
-//             inv_item_id: newItemData.inv_item_id,
-//             quantity: newItemData.quantity,
-//             unit_price: newItemData.unit_price,
-//             total_price: newItemTotalPrice,
-//         });
-//
-//         // Fetch all items for the corresponding purchase order
-//         const items = await models.purchase_order_items.findAll({
-//             where: { po_id: purchaseOrderId },
-//         });
-//
-//         // Calculate the new subtotal for the purchase order
-//         const newSubtotal = items.reduce((subtotal, item) => subtotal + item.total_price, 0);
-//
-//         // Update the purchase order with the new subtotal and total_amount
-//         const purchaseOrder = await models.purchase_orders.findByPk(purchaseOrderId);
-//         if (!purchaseOrder) {
-//             return res.status(404).json({ error: 'Purchase order not found' });
-//         }
-//
-//         await purchaseOrder.update({
-//             subtotal: newSubtotal,
-//             total_amount: newSubtotal + purchaseOrder.sales_tax,
-//         });
-//
-//         // Check if the item exists in the inventories table for the specific warehouse
-//         const inventoryItem = await models.inventories.findOne({
-//             where: {
-//                 tenant_id: newItemData.tenant_id,
-//                 item_id: newItemData.inv_item_id,
-//                 warehouse_id: newItemData.warehouse_id,
-//             },
-//         });
-//
-//         if (inventoryItem) {
-//             // Item exists in inventories, update the quantity
-//             await inventoryItem.update({
-//                 quantity: inventoryItem.quantity + newItemData.quantity,
-//             });
-//         } else {
-//             // Item doesn't exist in inventories, create a new entry
-//             await models.inventories.create({
-//                 tenant_id: newItemData.tenant_id,
-//                 item_id: newItemData.inv_item_id,
-//                 warehouse_id: newItemData.warehouse_id,
-//                 ordered: newItemData.quantity,
-//                 // Other columns as needed
-//             });
-//         }
-//
-//         res.status(200).json({ message: 'Item added to purchase order successfully', data: createdItem });
-//     } catch (error) {
-//         console.error('Error adding item to purchase order:', error);
-//         res.status(500).json({ error: 'Failed to add item to purchase order' });
-//     }
-// };
 
 
 
 
-// const updatePurchaseOrderItem = async (req, res) => {
-//     try {
-//         const itemId = req.body.item_id;
-//         const invItemId = req.body.inv_item_id;
-//         const updatedItemData = req.body;
-//         console.log(updatedItemData, 'Updated Item Data');
-//
-//         // Fetch the purchase order item for the specific item and purchase order
-//         const purchaseOrderItem = await models.purchase_order_items.findOne({
-//             where: {
-//                 id: itemId,
-//             },
-//             include: [
-//                 {
-//                     model: models.purchase_orders,
-//                     where: {
-//                         status: 'open',
-//                     },
-//                 },
-//             ],
-//         });
-//
-//         if (!purchaseOrderItem) {
-//             return res.status(404).json({ error: 'Purchase order item not found' });
-//         }
-//
-//         // Calculate the new total_price for the purchase order item
-//         const newTotalPrice = updatedItemData.unit_price * updatedItemData.quantity;
-//
-//         // Update the purchase order item with the new data
-//         await purchaseOrderItem.update({
-//             unit_price: updatedItemData.unit_price,
-//             quantity: updatedItemData.quantity,
-//             total_price: newTotalPrice,
-//         });
-//
-//         // Fetch all purchase order items for the specific item
-//         const purchaseOrderItems = await models.purchase_order_items.findAll({
-//             where: {
-//                 inv_item_id: invItemId,
-//             },
-//             include: [
-//                 {
-//                     model: models.purchase_orders,
-//                     where: {
-//                         status: 'open',
-//                     },
-//                 },
-//             ],
-//         });
-//
-//         // Calculate the total ordered quantity from all open purchase orders for the specific item
-//         const totalOrderedQuantity = purchaseOrderItems.reduce((totalQuantity, item) => {
-//             // Add the quantity of the item in this purchase order item to the total
-//             return totalQuantity + item.quantity;
-//         }, 0);
-//
-//         // Fetch the current quantity from the inventories table for the specific item and warehouse
-//         const { tenant_id, warehouse_id } = updatedItemData;
-//
-//         const inventoryData = await models.inventories.findOne({
-//             where: {
-//                 tenant_id,
-//                 item_id: invItemId,
-//                 warehouse_id,
-//             },
-//         });
-//
-//         if (!inventoryData) {
-//             return res.status(404).json({ error: 'Inventory data not found' });
-//         }
-//
-//         // Update the "ordered" column in the inventories table with the calculated total ordered quantity
-//         await inventoryData.update({
-//             ordered: totalOrderedQuantity,
-//         });
-//
-//         console.log('updated ordered quantity');
-//         res.status(200).json({ message: 'Item updated successfully' });
-//     } catch (error) {
-//         console.error('Error updating purchase order item:', error);
-//         res.status(500).json({ error: 'Failed to update item' });
-//     }
-// };
+
 
 const updatePurchaseOrderItem = async (req, res) => {
     try {
@@ -552,69 +400,6 @@ const updatePurchaseOrderItem = async (req, res) => {
 
 
 
-// const deletePurchaseOrderItem = async (req, res) => {
-//     try {
-//         console.log('Start')
-//         // const itemId = req.params.id; // Assuming you pass the item ID in the URL
-//         const { quantity, inv_item_id, warehouse_id, tenant_id, itemId } = req.query; // Quantity and other relevant data
-//         // Fetch the item from the purchase_order_items table
-//         console.log(quantity, inv_item_id, warehouse_id, tenant_id, req.query, 'PARAMS')
-//         const itemToDelete = await models.purchase_order_items.findByPk(itemId);
-//
-//         if (!itemToDelete) {
-//             return res.status(404).json({ error: 'Item not found' });
-//         }
-//
-//         // Delete the item from the purchase_order_items table
-//         await itemToDelete.destroy();
-//
-//         // Fetch all items for the corresponding purchase order
-//         const items = await models.purchase_order_items.findAll({
-//             where: { po_id: itemToDelete.po_id },
-//         });
-//
-//         // Calculate the new subtotal for the purchase order
-//         const newSubtotal = items.reduce((subtotal, item) => subtotal + item.total_price, 0);
-//
-//         // Update the purchase order with the new subtotal and total_amount
-//         const purchaseOrder = await models.purchase_orders.findByPk(itemToDelete.po_id);
-//         if (!purchaseOrder) {
-//             return res.status(404).json({ error: 'Purchase order not found' });
-//         }
-//
-//         await purchaseOrder.update({
-//             subtotal: newSubtotal,
-//             total_amount: newSubtotal + purchaseOrder.sales_tax,
-//         });
-//
-//         // Subtract the quantity from the "ordered" column in the inventories table
-//         const inventoryData = await models.inventories.findOne({
-//             where: {
-//                 tenant_id,
-//                 item_id: inv_item_id,
-//                 warehouse_id,
-//             },
-//         });
-//
-//         if (!inventoryData) {
-//             return res.status(404).json({ error: 'Inventory data not found' });
-//         }
-//
-//         // Ensure that the quantity to subtract does not exceed the current "ordered" quantity
-//         const newOrderedQuantity = Math.max(0, inventoryData.ordered - quantity);
-//
-//         // Update the "ordered" column in the inventories table
-//         await inventoryData.update({
-//             ordered: newOrderedQuantity,
-//         });
-//
-//         res.status(200).json({ message: 'Item deleted successfully' });
-//     } catch (error) {
-//         console.log('there was an error')
-//         console.error('Error deleting purchase order item:', error);
-//         res.status(500).json({ error: 'Failed to delete item' });
-//     }
-// };
 
 const deletePurchaseOrderItem = async (req, res) => {
     try {
@@ -799,11 +584,15 @@ const getPurchaseOrdersByTenant = async (req, res) => {
 
 
 
+
 const convertPOToGoodsReceipt = async (req, res) => {
     const transaction = await models.sequelize.transaction();
 
     try {
         const { poNo, tenant_id, receiver_id } = req.body;
+
+        let goodsReceipt;
+        let goodsReceiptItems = []; // Define goodsReceiptItems in the outer scope
 
         // Find an existing goods receipt for the given purchase order (po_id)
         const existingGoodsReceipt = await models.goods_receipts.findOne({
@@ -811,35 +600,25 @@ const convertPOToGoodsReceipt = async (req, res) => {
                 po_id: poNo,
                 tenant_id,
             },
-            include: [
-                {
-                    model: models.purchase_orders,
-                    attributes: ['user_id', 'warehouse_id', 'vendor_id'],
-                    where: {
-                        status: 'open',
-                    },
-                    include: [
-                        {
-                            model: models.warehouses,
-                            attributes: ['warehouse_name'],
-                        },
-                        {
-                            model: models.vendors,
-                            attributes: ['company_name', 'first_name', 'last_name', 'contact_phone', 'email'],
-                        },
-                        {
-                            model: models.users,
-                            attributes: ['first_name', 'last_name'],
-                        },
-                    ],
-                },
-            ],
         });
 
-        let goodsReceipt;
-
         if (existingGoodsReceipt) {
+            // Fetch existing goods_receipt_items for this goods_receipt
             goodsReceipt = existingGoodsReceipt;
+
+            // Fetch goods_receipt_items associated with the goods_receipt
+            goodsReceiptItems = await models.goods_receipt_items.findAll({
+                where: {
+                    goods_receipt_id: goodsReceipt.id,
+                    tenant_id,
+                },
+                include: [
+                    {
+                        model: models.inventory_items,
+                        attributes: ['id', 'item_name', 'manuf_sku', 'barcode'],
+                    },
+                ],
+            });
         } else {
             // Create a new goods receipt and use warehouse_id and vendor_id from the purchase order
             const purchaseOrder = await models.purchase_orders.findOne({
@@ -866,44 +645,65 @@ const convertPOToGoodsReceipt = async (req, res) => {
                 },
                 { transaction }
             );
-        }
 
-        // Fetch associated items for the purchase order, including the inventory_items data
-        const items = await models.purchase_order_items.findAll({
-            where: {
-                po_id: poNo,
-                tenant_id,
-            },
-            include: [
-                {
-                    model: models.inventory_items,
-                    attributes: ['id', 'item_name', 'manuf_sku', 'barcode'],
-                },
-            ],
-        });
-
-        // Create goods_receipt_items for each item
-        for (const item of items) {
-            await models.goods_receipt_items.create(
-                {
+            // Fetch associated items for the purchase order, including the inventory_items data
+            const items = await models.purchase_order_items.findAll({
+                where: {
+                    po_id: poNo,
                     tenant_id,
-                    goods_receipt_id: goodsReceipt.id,
-                    inv_item_id: item.inventory_item.id,
-                    quantity: item.quantity,
                 },
-                { transaction }
-            );
+                include: [
+                    {
+                        model: models.inventory_items,
+                        attributes: ['id'],
+                    },
+                ],
+            });
+
+            // Create goods_receipt_items for each item
+            const createdItems = [];
+            for (const item of items) {
+                const goodsReceiptItem = await models.goods_receipt_items.create(
+                    {
+                        tenant_id,
+                        goods_receipt_id: goodsReceipt.id,
+                        inv_item_id: item.inventory_item.id,
+                        quantity: item.quantity,
+                    },
+                    { transaction }
+                );
+
+                // Include the ID of the item in the created goods_receipt_item
+                goodsReceiptItem.dataValues.inventory_item_id = item.inventory_item.id;
+                createdItems.push(goodsReceiptItem);
+            }
+
+            // Fetch the goods_receipt_items again (including the newly created ones)
+            goodsReceiptItems = await models.goods_receipt_items.findAll({
+                where: {
+                    goods_receipt_id: goodsReceipt.id,
+                    tenant_id,
+                },
+                include: [
+                    {
+                        model: models.inventory_items,
+                        attributes: ['id', 'item_name', 'manuf_sku', 'barcode'],
+                    },
+                ],
+            });
         }
 
+        // Commit the transaction
         await transaction.commit();
 
         // Build the response object with the goodsReceipt, purchase_order, and user details
         const response = {
-            message: 'Goods Receipt Created or Fetched Successfully',
+            message: existingGoodsReceipt ? 'Goods Receipt Fetched Successfully' : 'Goods Receipt Created Successfully',
             data: {
                 goodsReceipt: {
                     ...goodsReceipt.toJSON(),
-                    items: items.map((item) => ({
+                    items: goodsReceiptItems.map((item) => ({
+                        id: item.dataValues.inventory_item.id, // Include the ID of the item in the response
                         ...item.toJSON(),
                         inventory_item: item.inventory_item,
                     })),
@@ -920,6 +720,138 @@ const convertPOToGoodsReceipt = async (req, res) => {
         res.status(500).json({ message: 'Error fetching or creating goods receipt, or goods receipt items' });
     }
 };
+
+
+
+
+
+
+// const convertPOToGoodsReceipt = async (req, res) => {
+//     const transaction = await models.sequelize.transaction();
+//
+//     try {
+//         const { poNo, tenant_id, receiver_id } = req.body;
+//
+//         // Find an existing goods receipt for the given purchase order (po_id)
+//         const existingGoodsReceipt = await models.goods_receipts.findOne({
+//             where: {
+//                 po_id: poNo,
+//                 tenant_id,
+//             },
+//             include: [
+//                 {
+//                     model: models.purchase_orders,
+//                     attributes: ['user_id', 'warehouse_id', 'vendor_id'],
+//                     where: {
+//                         status: 'open',
+//                     },
+//                     include: [
+//                         {
+//                             model: models.warehouses,
+//                             attributes: ['warehouse_name'],
+//                         },
+//                         {
+//                             model: models.vendors,
+//                             attributes: ['company_name', 'first_name', 'last_name', 'contact_phone', 'email'],
+//                         },
+//                         {
+//                             model: models.users,
+//                             attributes: ['first_name', 'last_name'],
+//                         },
+//                     ],
+//                 },
+//             ],
+//         });
+//
+//         let goodsReceipt;
+//
+//         if (existingGoodsReceipt) {
+//             goodsReceipt = existingGoodsReceipt;
+//         } else {
+//             // Create a new goods receipt and use warehouse_id and vendor_id from the purchase order
+//             const purchaseOrder = await models.purchase_orders.findOne({
+//                 where: {
+//                     id: poNo,
+//                     tenant_id,
+//                     status: 'open',
+//                 },
+//             });
+//
+//             if (!purchaseOrder) {
+//                 await transaction.rollback();
+//                 return res.status(404).json({ message: 'No open purchase orders found' });
+//             }
+//
+//             goodsReceipt = await models.goods_receipts.create(
+//                 {
+//                     tenant_id,
+//                     warehouse_id: purchaseOrder.warehouse_id,
+//                     vendor_id: purchaseOrder.vendor_id,
+//                     po_id: poNo,
+//                     receiver_id,
+//                     buyer_id: purchaseOrder.user_id,
+//                 },
+//                 { transaction }
+//             );
+//         }
+//
+//         // Fetch associated items for the purchase order, including the inventory_items data
+//         const items = await models.purchase_order_items.findAll({
+//             where: {
+//                 po_id: poNo,
+//                 tenant_id,
+//             },
+//             include: [
+//                 {
+//                     model: models.inventory_items,
+//                     attributes: ['id', 'item_name', 'manuf_sku', 'barcode'],
+//                 },
+//             ],
+//         });
+//
+//         // Create goods_receipt_items for each item
+//         for (const item of items) {
+//             await models.goods_receipt_items.create(
+//                 {
+//                     tenant_id,
+//                     goods_receipt_id: goodsReceipt.id,
+//                     inv_item_id: item.inventory_item.id,
+//                     quantity: item.quantity,
+//                 },
+//                 { transaction }
+//             );
+//         }
+//
+//         await transaction.commit();
+//
+//         // Build the response object with the goodsReceipt, purchase_order, and user details
+//         const response = {
+//             message: 'Goods Receipt Created or Fetched Successfully',
+//             data: {
+//                 goodsReceipt: {
+//                     ...goodsReceipt.toJSON(),
+//                     items: items.map((item) => ({
+//                         ...item.toJSON(),
+//                         inventory_item: item.inventory_item,
+//                     })),
+//                 },
+//             },
+//         };
+//
+//         res.status(200).json(response);
+//     } catch (error) {
+//         console.error('Error fetching or creating goods receipt, or goods receipt items:', error);
+//
+//         await transaction.rollback();
+//
+//         res.status(500).json({ message: 'Error fetching or creating goods receipt, or goods receipt items' });
+//     }
+// };
+
+
+
+
+
 
 
 
