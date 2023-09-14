@@ -719,6 +719,32 @@ const convertPOToGoodsReceipt = async (req, res) => {
     }
 };
 
+const updateReceivedQuanitiy = async(req, res) => {
+    try {
+        const itemId = req.params.id;
+        const { received_quantity, tenant_id } = req.body;
+
+        const item = await models.goods_receipt_items.findOne({
+            where: {
+                id: itemId,
+                tenant_id: tenant_id
+            }
+        });
+
+        if (!item) {
+            return res.status(404).json({ message: 'Item not found' });
+        }
+
+        // Update the received_quantity column
+        item.received_quantity = received_quantity;
+        await item.save();
+
+        return res.status(200).json({ message: 'Received quantity updated successfully' });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+}
 
 module.exports = {
     createPO,
@@ -728,5 +754,6 @@ module.exports = {
     deletePurchaseOrderItem,
     updatePurchaseOrder,
     convertPOToGoodsReceipt,
-getPurchaseOrdersByTenant
+getPurchaseOrdersByTenant,
+    updateReceivedQuanitiy
 }
