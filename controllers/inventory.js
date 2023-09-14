@@ -199,7 +199,6 @@ const getStockData = async (req, res) => {
 const updateInventoryForGoodsReceipt = async (req, res) => {
     try {
         const { goodsReceiptId, warehouseId } = req.body;
-        console.log(req.body, 'REQ BODY')
 
         // Find all items related to the goodsReceiptId in goods_receipt_items
         const goodsReceiptItems = await models.goods_receipt_items.findAll({
@@ -207,7 +206,6 @@ const updateInventoryForGoodsReceipt = async (req, res) => {
                 goods_receipt_id: goodsReceiptId,
             },
         });
-        console.log('gr found')
 
         if (!goodsReceiptItems || goodsReceiptItems.length === 0) {
             throw new Error(`No goods receipt items found for Goods Receipt ID ${goodsReceiptId}.`);
@@ -224,7 +222,6 @@ const updateInventoryForGoodsReceipt = async (req, res) => {
                     warehouse_id: warehouseId,
                 },
             });
-            console.log('inv item  found')
 
             if (!inventoryItem) {
                 throw new Error(`Inventory item with Item ID ${inv_item_id} and Warehouse ID ${warehouseId} not found.`);
@@ -239,14 +236,114 @@ const updateInventoryForGoodsReceipt = async (req, res) => {
             await inventoryItem.save();
         }
 
+        // Update the goods receipt status to "closed" in the goods_receipts table
+        const goodsReceiptToUpdate = await models.goods_receipts.findOne({
+            where: {
+                id: goodsReceiptId,
+            },
+        });
+
+        if (!goodsReceiptToUpdate) {
+            throw new Error(`Goods receipt with ID ${goodsReceiptId} not found.`);
+        }
+
+        // Update the status to "closed" (assuming "closed" is an enum value)
+        goodsReceiptToUpdate.status = 'closed';
+
+        // Save the updated goods receipt item
+        await goodsReceiptToUpdate.save();
+
+        // Find the corresponding purchase order based on po_id
+        const purchaseOrder = await models.purchase_orders.findOne({
+            where: {
+                id: goodsReceiptToUpdate.po_id,
+            },
+        });
+
+        if (!purchaseOrder) {
+            throw new Error(`Purchase order with ID ${goodsReceiptToUpdate.po_id} not found.`);
+        }
+
+        // Update the status of the purchase order to "closed" (assuming "closed" is an enum value)
+        purchaseOrder.status = 'closed';
+
+        // Save the updated purchase order
+        await purchaseOrder.save();
+
         // Return a success message or result if needed
-        return res.status(200).json({ message: 'Inventory updated successfully' });
+        return res.status(200).json({ message: 'Inventory and purchase order updated successfully' });
     } catch (error) {
-        console.error('Error updating inventory:', error);
-        console.log(error, 'ERROR')
-        return res.status(500).json({ message: 'Error updating inventory' });
+        console.error('Error updating inventory and purchase order:', error);
+        return res.status(500).json({ message: 'Error updating inventory and purchase order' });
     }
 };
+
+// const updateInventoryForGoodsReceipt = async (req, res) => {
+//     try {
+//         const { goodsReceiptId, warehouseId } = req.body;
+//
+//         // Find all items related to the goodsReceiptId in goods_receipt_items
+//         const goodsReceiptItems = await models.goods_receipt_items.findAll({
+//             where: {
+//                 goods_receipt_id: goodsReceiptId,
+//             },
+//         });
+//
+//         if (!goodsReceiptItems || goodsReceiptItems.length === 0) {
+//             throw new Error(`No goods receipt items found for Goods Receipt ID ${goodsReceiptId}.`);
+//         }
+//
+//         // Iterate through the items and update inventory for each one
+//         for (const goodsReceiptItem of goodsReceiptItems) {
+//             const { inv_item_id, quantity, received_quantity } = goodsReceiptItem;
+//
+//             // Find the corresponding item in the inventories table
+//             const inventoryItem = await models.inventories.findOne({
+//                 where: {
+//                     item_id: inv_item_id,
+//                     warehouse_id: warehouseId,
+//                 },
+//             });
+//
+//             if (!inventoryItem) {
+//                 throw new Error(`Inventory item with Item ID ${inv_item_id} and Warehouse ID ${warehouseId} not found.`);
+//             }
+//
+//             // Update the ordered, in_stock, and available columns
+//             inventoryItem.ordered -= quantity;
+//             inventoryItem.in_stock += received_quantity;
+//             inventoryItem.available += received_quantity;
+//
+//             // Save the updated inventory item
+//             await inventoryItem.save();
+//         }
+//
+//         // Update the goods receipt status to "closed" in the goods_receipts table
+//         const goodsReceiptToUpdate = await models.goods_receipts.findOne({
+//             where: {
+//                 id: goodsReceiptId,
+//             },
+//         });
+//
+//         if (!goodsReceiptToUpdate) {
+//             throw new Error(`Goods receipt with ID ${goodsReceiptId} not found.`);
+//         }
+//
+//         // Update the status to "closed" (assuming "closed" is an enum value)
+//         goodsReceiptToUpdate.status = 'closed';
+//
+//         // Save the updated goods receipt item
+//         await goodsReceiptToUpdate.save();
+//
+//         // Return a success message or result if needed
+//         return res.status(200).json({ message: 'Inventory updated successfully' });
+//     } catch (error) {
+//         console.error('Error updating inventory:', error);
+//         return res.status(500).json({ message: 'Error updating inventory' });
+//     }
+// };
+
+
 
 
 
