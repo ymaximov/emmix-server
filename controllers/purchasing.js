@@ -583,8 +583,6 @@ const getPurchaseOrdersByTenant = async (req, res) => {
 };
 
 
-
-
 const convertPOToGoodsReceipt = async (req, res) => {
     const transaction = await models.sequelize.transaction();
 
@@ -677,24 +675,24 @@ const convertPOToGoodsReceipt = async (req, res) => {
                 goodsReceiptItem.dataValues.inventory_item_id = item.inventory_item.id;
                 createdItems.push(goodsReceiptItem);
             }
-
-            // Fetch the goods_receipt_items again (including the newly created ones)
-            goodsReceiptItems = await models.goods_receipt_items.findAll({
-                where: {
-                    goods_receipt_id: goodsReceipt.id,
-                    tenant_id,
-                },
-                include: [
-                    {
-                        model: models.inventory_items,
-                        attributes: ['id', 'item_name', 'manuf_sku', 'barcode'],
-                    },
-                ],
-            });
         }
 
         // Commit the transaction
         await transaction.commit();
+
+        // Fetch the goods_receipt_items again (including the newly created ones)
+        goodsReceiptItems = await models.goods_receipt_items.findAll({
+            where: {
+                goods_receipt_id: goodsReceipt.id,
+                tenant_id,
+            },
+            include: [
+                {
+                    model: models.inventory_items,
+                    attributes: ['id', 'item_name', 'manuf_sku', 'barcode'],
+                },
+            ],
+        });
 
         // Build the response object with the goodsReceipt, purchase_order, and user details
         const response = {
@@ -722,150 +720,7 @@ const convertPOToGoodsReceipt = async (req, res) => {
 };
 
 
-
-
-
-
-// const convertPOToGoodsReceipt = async (req, res) => {
-//     const transaction = await models.sequelize.transaction();
-//
-//     try {
-//         const { poNo, tenant_id, receiver_id } = req.body;
-//
-//         // Find an existing goods receipt for the given purchase order (po_id)
-//         const existingGoodsReceipt = await models.goods_receipts.findOne({
-//             where: {
-//                 po_id: poNo,
-//                 tenant_id,
-//             },
-//             include: [
-//                 {
-//                     model: models.purchase_orders,
-//                     attributes: ['user_id', 'warehouse_id', 'vendor_id'],
-//                     where: {
-//                         status: 'open',
-//                     },
-//                     include: [
-//                         {
-//                             model: models.warehouses,
-//                             attributes: ['warehouse_name'],
-//                         },
-//                         {
-//                             model: models.vendors,
-//                             attributes: ['company_name', 'first_name', 'last_name', 'contact_phone', 'email'],
-//                         },
-//                         {
-//                             model: models.users,
-//                             attributes: ['first_name', 'last_name'],
-//                         },
-//                     ],
-//                 },
-//             ],
-//         });
-//
-//         let goodsReceipt;
-//
-//         if (existingGoodsReceipt) {
-//             goodsReceipt = existingGoodsReceipt;
-//         } else {
-//             // Create a new goods receipt and use warehouse_id and vendor_id from the purchase order
-//             const purchaseOrder = await models.purchase_orders.findOne({
-//                 where: {
-//                     id: poNo,
-//                     tenant_id,
-//                     status: 'open',
-//                 },
-//             });
-//
-//             if (!purchaseOrder) {
-//                 await transaction.rollback();
-//                 return res.status(404).json({ message: 'No open purchase orders found' });
-//             }
-//
-//             goodsReceipt = await models.goods_receipts.create(
-//                 {
-//                     tenant_id,
-//                     warehouse_id: purchaseOrder.warehouse_id,
-//                     vendor_id: purchaseOrder.vendor_id,
-//                     po_id: poNo,
-//                     receiver_id,
-//                     buyer_id: purchaseOrder.user_id,
-//                 },
-//                 { transaction }
-//             );
-//         }
-//
-//         // Fetch associated items for the purchase order, including the inventory_items data
-//         const items = await models.purchase_order_items.findAll({
-//             where: {
-//                 po_id: poNo,
-//                 tenant_id,
-//             },
-//             include: [
-//                 {
-//                     model: models.inventory_items,
-//                     attributes: ['id', 'item_name', 'manuf_sku', 'barcode'],
-//                 },
-//             ],
-//         });
-//
-//         // Create goods_receipt_items for each item
-//         for (const item of items) {
-//             await models.goods_receipt_items.create(
-//                 {
-//                     tenant_id,
-//                     goods_receipt_id: goodsReceipt.id,
-//                     inv_item_id: item.inventory_item.id,
-//                     quantity: item.quantity,
-//                 },
-//                 { transaction }
-//             );
-//         }
-//
-//         await transaction.commit();
-//
-//         // Build the response object with the goodsReceipt, purchase_order, and user details
-//         const response = {
-//             message: 'Goods Receipt Created or Fetched Successfully',
-//             data: {
-//                 goodsReceipt: {
-//                     ...goodsReceipt.toJSON(),
-//                     items: items.map((item) => ({
-//                         ...item.toJSON(),
-//                         inventory_item: item.inventory_item,
-//                     })),
-//                 },
-//             },
-//         };
-//
-//         res.status(200).json(response);
-//     } catch (error) {
-//         console.error('Error fetching or creating goods receipt, or goods receipt items:', error);
-//
-//         await transaction.rollback();
-//
-//         res.status(500).json({ message: 'Error fetching or creating goods receipt, or goods receipt items' });
-//     }
-// };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-                module.exports = {
+module.exports = {
     createPO,
     getPODataByPOID,
     addItemToPurchaseOrder,
