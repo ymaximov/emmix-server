@@ -73,6 +73,11 @@ module.exports = (sequelize, DataTypes) => {
                 type: DataTypes.FLOAT,
                 allowNull: true,
             },
+            invoiced: {
+                type: DataTypes.BOOLEAN,
+                allowNull: false,
+                defaultValue: false
+            },
             createdAt: {
                 allowNull: false,
                 type: DataTypes.DATE,

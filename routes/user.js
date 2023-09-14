@@ -7,6 +7,7 @@ router.post('/add-new-user', userController.addUser)
 
 router.post('/login', userController.loginUser )
 router.put('/update-user', auth, userController.updateUser)
+router.get('/get-users-by-tenant/:id', auth, userController.getUsersByTenant)
 
 
 

@@ -152,8 +152,28 @@ const updateUser = async(req, res, next) => {
     }
 }
 
+const getUsersByTenant = async(req, res, next) => {
+    const tenant_id = req.params.id;
+    console.log(tenant_id, 'TENANTIDDDD')
+    try {
+        let users = await models.users.findAll({
+            where: {
+                tenant_id
+            }
+        });
+
+
+        res.status(200).send({message: 'Users have been fetched successfully', data: users});
+        console.log('data pushed to front')
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching Warehouses' });
+        console.log(error, 'ERROR')
+    }
+}
+
 module.exports = {
     addUser,
     loginUser,
-    updateUser
+    updateUser,
+    getUsersByTenant
 }
