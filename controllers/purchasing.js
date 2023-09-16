@@ -746,6 +746,69 @@ const updateReceivedQuanitiy = async(req, res) => {
     }
 }
 
+const voidPO = async (req, res) => {
+    try {
+        // Assuming the request body contains an object with warehouse_id, tenant_id, items (an array of objects with inv_item_id and quantity), and purchaseOrderId
+        const { warehouse_id, tenant_id, items, purchaseOrderId } = req.body;
+        console.log(req.body, 'REQ BODY')
+
+        if (!warehouse_id || !tenant_id || !items || !Array.isArray(items) || items.length === 0 || !purchaseOrderId) {
+            return res.status(400).json({ message: 'Invalid or empty request body' });
+        }
+
+        // Iterate through the items and update the ordered column for each item
+        for (const itemToUpdate of items) {
+            const { inv_item_id, quantity } = itemToUpdate;
+            console.log(inv_item_id, quantity, 'ITEM TO UP{DATE')
+
+            // Find the corresponding item in the inventories table
+            const inventoryItem = await models.inventories.findOne({
+                where: {
+                    item_id: inv_item_id, // Change to inv_item_id
+                    warehouse_id,
+                    tenant_id,
+                },
+            });
+            console.log(inventoryItem, 'INV ITEM')
+
+            if (!inventoryItem) {
+                return res.status(404).json({ message: `Inventory item with Item ID ${inv_item_id}, Warehouse ID ${warehouse_id}, and Tenant ID ${tenant_id} not found.` });
+            }
+
+            // Update the ordered column by subtracting the quantity
+            inventoryItem.ordered -= quantity;
+
+            // Save the updated inventory item
+            await inventoryItem.save();
+            console.log('SAVED')
+        }
+
+        // Update the purchase order status to "void" in the purchase_orders table
+        const purchaseOrderToUpdate = await models.purchase_orders.findOne({
+            where: {
+                id: purchaseOrderId,
+                tenant_id,
+            },
+        });
+        console.log('PO UPDATED')
+        if (!purchaseOrderToUpdate) {
+            return res.status(404).json({ message: `Purchase order with ID ${purchaseOrderId} and Tenant ID ${tenant_id} not found.` });
+        }
+
+        // Update the status to "void" (assuming "void" is an enum value)
+        purchaseOrderToUpdate.status = 'void';
+
+        // Save the updated purchase order
+        await purchaseOrderToUpdate.save();
+
+        return res.status(200).json({ message: 'Inventory ordered updated successfully and purchase order voided' });
+    } catch (error) {
+        console.error('Error updating inventory ordered and voiding purchase order:', error);
+        return res.status(500).json({ message: 'Error updating inventory ordered and voiding purchase order' });
+    }
+};
+
+
 module.exports = {
     createPO,
     getPODataByPOID,
@@ -755,5 +818,6 @@ module.exports = {
     updatePurchaseOrder,
     convertPOToGoodsReceipt,
 getPurchaseOrdersByTenant,
-    updateReceivedQuanitiy
+    updateReceivedQuanitiy,
+    voidPO
 }
