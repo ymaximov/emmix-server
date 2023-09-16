@@ -77,7 +77,8 @@ const createPO = async (req, res) => {
             due_date: purchaseOrderData.due_date,
             sales_tax: purchaseOrderData.sales_tax,
             subtotal: purchaseOrderData.subtotal,
-            total_amount: purchaseOrderData.total_amount
+            total_amount: purchaseOrderData.total_amount,
+            reference: purchaseOrderData.reference
         });
         console.log('PO CREATED SUCCESS')
 
@@ -208,6 +209,88 @@ const getPODataByPOID = async (req, res, next) => {
         console.error(error, 'ERROR');
     }
 };
+// const addItemToPurchaseOrder = async (req, res) => {
+//     try {
+//         const purchaseOrderId = req.body.po_id;
+//         const newItemData = req.body;
+//         console.log(req.body, 'Req Body')
+//
+//         // Calculate the total_price for the new item
+//         const newItemTotalPrice = newItemData.unit_price * newItemData.quantity;
+//
+//         // Insert the new item into the purchase_order_items table
+//         const createdItem = await models.purchase_order_items.create({
+//             tenant_id: newItemData.tenant_id,
+//             po_id: purchaseOrderId,
+//             inv_item_id: newItemData.inv_item_id,
+//             quantity: newItemData.quantity,
+//             unit_price: newItemData.unit_price,
+//             total_price: newItemTotalPrice,
+//         });
+//         console.log('crreated PO Item')
+//
+//         // Fetch all items for the corresponding purchase order
+//         const items = await models.purchase_order_items.findAll({
+//             where: { po_id: purchaseOrderId },
+//         });
+//
+//         // Calculate the new subtotal for the purchase order
+//         const newSubtotal = items.reduce((subtotal, item) => subtotal + item.total_price, 0);
+//
+//         // Update the purchase order with the new subtotal and total_amount
+//         const purchaseOrder = await models.purchase_orders.findByPk(purchaseOrderId);
+//         if (!purchaseOrder) {
+//             return res.status(404).json({ error: 'Purchase order not found' });
+//         }
+//
+//         await purchaseOrder.update({
+//             subtotal: newSubtotal,
+//             total_amount: newSubtotal + purchaseOrder.sales_tax,
+//         });
+//         console.log('updated subtotal')
+//
+//         // Check if the item exists in the inventories table for the specific warehouse
+//         const inventoryItem = await models.inventory_items.findOne({
+//             where: {
+//                 tenant_id: newItemData.tenant_id,
+//                 id: newItemData.inv_item_id,
+//             },
+//         });
+//
+//         if (inventoryItem && inventoryItem.inventory_item) {
+//             // Item is an inventory item, add/update data in the inventories table
+//             const inventoryData = await models.inventories.findOne({
+//                 where: {
+//                     tenant_id: newItemData.tenant_id,
+//                     item_id: newItemData.inv_item_id,
+//                     warehouse_id: newItemData.warehouse_id,
+//                 },
+//             });
+//
+//             if (inventoryData) {
+//                 // Item exists in inventories, update the quantity
+//                 await inventoryData.update({
+//                     quantity: inventoryData.quantity + newItemData.quantity,
+//                 });
+//             } else {
+//                 // Item doesn't exist in inventories, create a new entry
+//                 await models.inventories.create({
+//                     tenant_id: newItemData.tenant_id,
+//                     item_id: newItemData.inv_item_id,
+//                     warehouse_id: newItemData.warehouse_id,
+//                     ordered: newItemData.quantity,
+//                     // Other columns as needed
+//                 });
+//             }
+//         }
+//
+//         res.status(200).json({ message: 'Item added to purchase order successfully', data: createdItem });
+//     } catch (error) {
+//         console.error('Error adding item to purchase order:', error);
+//         res.status(500).json({ error: 'Failed to add item to purchase order' });
+//     }
+// };
+
 const addItemToPurchaseOrder = async (req, res) => {
     try {
         const purchaseOrderId = req.body.po_id;
@@ -226,7 +309,7 @@ const addItemToPurchaseOrder = async (req, res) => {
             unit_price: newItemData.unit_price,
             total_price: newItemTotalPrice,
         });
-        console.log('crreated PO Item')
+        console.log('created PO Item')
 
         // Fetch all items for the corresponding purchase order
         const items = await models.purchase_order_items.findAll({
@@ -268,8 +351,9 @@ const addItemToPurchaseOrder = async (req, res) => {
 
             if (inventoryData) {
                 // Item exists in inventories, update the quantity
+                const currentOrderedQuantity = inventoryData.ordered || 0;
                 await inventoryData.update({
-                    quantity: inventoryData.quantity + newItemData.quantity,
+                    ordered: currentOrderedQuantity + newItemData.quantity,
                 });
             } else {
                 // Item doesn't exist in inventories, create a new entry
@@ -289,6 +373,7 @@ const addItemToPurchaseOrder = async (req, res) => {
         res.status(500).json({ error: 'Failed to add item to purchase order' });
     }
 };
+
 
 
 const updatePurchaseOrderItem = async (req, res) => {
