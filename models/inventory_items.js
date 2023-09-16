@@ -9,6 +9,7 @@ module.exports = (sequelize, DataTypes) => {
             InventoryItem.belongsTo(models.tenants, { foreignKey: 'tenant_id' });
             InventoryItem.belongsTo(models.manufacturers, { foreignKey: 'manufacturer_id' });
             InventoryItem.belongsTo(models.item_groups, { foreignKey: 'item_group_id' });
+            InventoryItem.belongsTo(models.warehouses, { foreignKey: 'default_wh' });
             InventoryItem.belongsTo(models.vendors, { foreignKey: 'vendor_1' });
             InventoryItem.belongsTo(models.vendors, { foreignKey: 'vendor_2' });
             InventoryItem.belongsTo(models.vendors, { foreignKey: 'vendor_3' });
@@ -38,8 +39,22 @@ module.exports = (sequelize, DataTypes) => {
                 autoIncrement: true,
             },
             tenant_id: {
-                allowNull: false,
                 type: DataTypes.INTEGER,
+                references: {
+                    model: 'tenants',
+                    key: 'id'
+                },
+                onUpdate: 'CASCADE',
+                onDelete: 'SET NULL'
+            },
+            default_wh: {
+                type: DataTypes.INTEGER,
+                references: {
+                    model: 'warehouses',
+                    key: 'id'
+                },
+                onUpdate: 'CASCADE',
+                onDelete: 'SET NULL'
             },
             item_type: {
                 type: DataTypes.ENUM('items', 'labor', 'travel'),
