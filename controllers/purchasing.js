@@ -291,9 +291,6 @@ const addItemToPurchaseOrder = async (req, res) => {
 };
 
 
-
-
-
 const updatePurchaseOrderItem = async (req, res) => {
     try {
         const itemId = req.body.item_id;
@@ -327,11 +324,10 @@ const updatePurchaseOrderItem = async (req, res) => {
         const inventoryItem = await models.inventory_items.findOne({
             where: {
                 id: invItemId,
-                inventory_item: true, // Check if it's an inventory item
             },
         });
 
-        if (inventoryItem) {
+        if (inventoryItem && inventoryItem.inventory_item) {
             // Fetch the current quantity from the inventories table for the specific item, warehouse, and tenant
             const { tenant_id, warehouse_id } = updatedItemData;
 
@@ -389,6 +385,13 @@ const updatePurchaseOrderItem = async (req, res) => {
 
             // Save the updated inventory data with the added quantity
             await inventoryData.save();
+        } else {
+            // If it's not an inventory item, update the quantity in purchase_order_items only
+            await purchaseOrderItem.update({
+                unit_price: updatedItemData.unit_price,
+                quantity: updatedItemData.quantity,
+                total_price: updatedItemData.unit_price * updatedItemData.quantity, // Calculate total_price based on the NEW quantity
+            });
         }
 
         res.status(200).json({ message: 'Item updated successfully' });
@@ -397,6 +400,112 @@ const updatePurchaseOrderItem = async (req, res) => {
         res.status(500).json({ error: 'Failed to update item' });
     }
 };
+
+
+
+// const updatePurchaseOrderItem = async (req, res) => {
+//     try {
+//         const itemId = req.body.item_id;
+//         const invItemId = req.body.inv_item_id;
+//         const updatedItemData = req.body;
+//         console.log(updatedItemData, 'Updated Item Data');
+//
+//         // Fetch the purchase order item for the specific item and purchase order
+//         const purchaseOrderItem = await models.purchase_order_items.findOne({
+//             where: {
+//                 id: itemId,
+//             },
+//             include: [
+//                 {
+//                     model: models.purchase_orders,
+//                     where: {
+//                         status: 'open',
+//                     },
+//                 },
+//             ],
+//         });
+//
+//         if (!purchaseOrderItem) {
+//             return res.status(404).json({ error: 'Purchase order item not found' });
+//         }
+//
+//         // Fetch the current quantity from the purchase order item
+//         const currentQuantity = purchaseOrderItem.quantity;
+//
+//         // Check if the item is an inventory item
+//         const inventoryItem = await models.inventory_items.findOne({
+//             where: {
+//                 id: invItemId,
+//                 inventory_item: true, // Check if it's an inventory item
+//             },
+//         });
+//
+//         if (inventoryItem) {
+//             // Fetch the current quantity from the inventories table for the specific item, warehouse, and tenant
+//             const { tenant_id, warehouse_id } = updatedItemData;
+//
+//             let inventoryData = await models.inventories.findOne({
+//                 where: {
+//                     tenant_id,
+//                     item_id: invItemId,
+//                     warehouse_id,
+//                 },
+//             });
+//
+//             if (!inventoryData) {
+//                 return res.status(404).json({ error: 'Inventory data not found' });
+//             }
+//
+//             // Subtract the current quantity of the purchase order for that item from the ordered column in inventories
+//             inventoryData.ordered -= currentQuantity;
+//
+//             // Save the updated inventory data with the subtracted quantity
+//             await inventoryData.save();
+//
+//             // Calculate the new total_price based on the NEW quantity from the frontend
+//             const newTotalPrice = updatedItemData.unit_price * updatedItemData.quantity;
+//
+//             // Update the purchase order item with the new data
+//             await purchaseOrderItem.update({
+//                 unit_price: updatedItemData.unit_price,
+//                 quantity: updatedItemData.quantity,
+//                 total_price: newTotalPrice, // Updated based on the NEW quantity
+//             });
+//
+//             // Fetch all purchase order items for the specific item
+//             const purchaseOrderItems = await models.purchase_order_items.findAll({
+//                 where: {
+//                     inv_item_id: invItemId,
+//                 },
+//                 include: [
+//                     {
+//                         model: models.purchase_orders,
+//                         where: {
+//                             status: 'open',
+//                         },
+//                     },
+//                 ],
+//             });
+//
+//             // Calculate the total ordered quantity from all open purchase orders for the specific item
+//             const totalOrderedQuantity = purchaseOrderItems.reduce((totalQuantity, item) => {
+//                 // Add the quantity of the item in this purchase order item to the total
+//                 return totalQuantity + item.quantity;
+//             }, 0);
+//
+//             // Add the new totalOrderedQuantity to the "ordered" column in inventories
+//             inventoryData.ordered += totalOrderedQuantity;
+//
+//             // Save the updated inventory data with the added quantity
+//             await inventoryData.save();
+//         }
+//
+//         res.status(200).json({ message: 'Item updated successfully' });
+//     } catch (error) {
+//         console.error('Error updating purchase order item:', error);
+//         res.status(500).json({ error: 'Failed to update item' });
+//     }
+// };
 
 
 
@@ -862,29 +971,47 @@ const voidPO = async (req, res) => {
             return res.status(400).json({ message: 'Invalid or empty request body' });
         }
 
+        // Fetch inventory item flags for all items from the inventory_items table
+        const itemFlags = await models.inventory_items.findAll({
+            where: {
+                id: items.map(item => item.inv_item_id),
+            },
+        });
+
+        // Create a map to store the inventory item flags by inv_item_id
+        const itemFlagsMap = {};
+        itemFlags.forEach(itemFlag => {
+            itemFlagsMap[itemFlag.id] = itemFlag.inventory_item;
+        });
+
         // Iterate through the items and update the ordered column for each item
         for (const itemToUpdate of items) {
             const { inv_item_id, quantity } = itemToUpdate;
 
-            // Find the corresponding item in the inventories table
-            const inventoryItem = await models.inventories.findOne({
-                where: {
-                    item_id: inv_item_id, // Change to inv_item_id
-                    warehouse_id,
-                    tenant_id,
-                },
-            });
+            // Check if the item is marked as an inventory item in the inventory_items table
+            const isInventoryItem = itemFlagsMap[inv_item_id];
 
-            if (!inventoryItem) {
-                return res.status(404).json({ message: `Inventory item with Item ID ${inv_item_id}, Warehouse ID ${warehouse_id}, and Tenant ID ${tenant_id} not found.` });
+            if (isInventoryItem) {
+                // Find the corresponding item in the inventories table
+                const inventoryItem = await models.inventories.findOne({
+                    where: {
+                        item_id: inv_item_id,
+                        warehouse_id,
+                        tenant_id,
+                    },
+                });
+
+                if (!inventoryItem) {
+                    return res.status(404).json({ message: `Inventory item with Item ID ${inv_item_id}, Warehouse ID ${warehouse_id}, and Tenant ID ${tenant_id} not found.` });
+                }
+
+                // Update the ordered column by subtracting the quantity
+                inventoryItem.ordered -= quantity;
+
+                // Save the updated inventory item
+                await inventoryItem.save();
+                console.log('SAVED');
             }
-
-            // Update the ordered column by subtracting the quantity
-            inventoryItem.ordered -= quantity;
-
-            // Save the updated inventory item
-            await inventoryItem.save();
-            console.log('SAVED')
         }
 
         // Update the purchase order status to "void" in the purchase_orders table
@@ -905,12 +1032,73 @@ const voidPO = async (req, res) => {
         // Save the updated purchase order
         await purchaseOrderToUpdate.save();
 
-        return res.status(200).json({ message: 'Inventory ordered updated successfully and purchase order voided' });
+        return res.status(200).json({ message: 'Purchase Order Has Been Voided' });
     } catch (error) {
         console.error('Error updating inventory ordered and voiding purchase order:', error);
         return res.status(500).json({ message: 'Error updating inventory ordered and voiding purchase order' });
     }
 };
+
+
+// const voidPO = async (req, res) => {
+//     try {
+//         // Assuming the request body contains an object with warehouse_id, tenant_id, items (an array of objects with inv_item_id and quantity), and purchaseOrderId
+//         const { warehouse_id, tenant_id, items, purchaseOrderId } = req.body;
+//         console.log(req.body, 'REQ BODY')
+//
+//         if (!warehouse_id || !tenant_id || !items || !Array.isArray(items) || items.length === 0 || !purchaseOrderId) {
+//             return res.status(400).json({ message: 'Invalid or empty request body' });
+//         }
+//
+//         // Iterate through the items and update the ordered column for each item
+//         for (const itemToUpdate of items) {
+//             const { inv_item_id, quantity } = itemToUpdate;
+//
+//             // Find the corresponding item in the inventories table
+//             const inventoryItem = await models.inventories.findOne({
+//                 where: {
+//                     item_id: inv_item_id, // Change to inv_item_id
+//                     warehouse_id,
+//                     tenant_id,
+//                 },
+//             });
+//
+//             if (!inventoryItem) {
+//                 return res.status(404).json({ message: `Inventory item with Item ID ${inv_item_id}, Warehouse ID ${warehouse_id}, and Tenant ID ${tenant_id} not found.` });
+//             }
+//
+//             // Update the ordered column by subtracting the quantity
+//             inventoryItem.ordered -= quantity;
+//
+//             // Save the updated inventory item
+//             await inventoryItem.save();
+//             console.log('SAVED')
+//         }
+//
+//         // Update the purchase order status to "void" in the purchase_orders table
+//         const purchaseOrderToUpdate = await models.purchase_orders.findOne({
+//             where: {
+//                 id: purchaseOrderId,
+//                 tenant_id,
+//             },
+//         });
+//         console.log('PO UPDATED')
+//         if (!purchaseOrderToUpdate) {
+//             return res.status(404).json({ message: `Purchase order with ID ${purchaseOrderId} and Tenant ID ${tenant_id} not found.` });
+//         }
+//
+//         // Update the status to "void" (assuming "void" is an enum value)
+//         purchaseOrderToUpdate.status = 'void';
+//
+//         // Save the updated purchase order
+//         await purchaseOrderToUpdate.save();
+//
+//         return res.status(200).json({ message: 'Purchase Order Has Been Voided' });
+//     } catch (error) {
+//         console.error('Error updating inventory ordered and voiding purchase order:', error);
+//         return res.status(500).json({ message: 'Error updating inventory ordered and voiding purchase order' });
+//     }
+// };
 
 
 module.exports = {
