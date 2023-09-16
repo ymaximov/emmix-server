@@ -759,7 +759,6 @@ const voidPO = async (req, res) => {
         // Iterate through the items and update the ordered column for each item
         for (const itemToUpdate of items) {
             const { inv_item_id, quantity } = itemToUpdate;
-            console.log(inv_item_id, quantity, 'ITEM TO UP{DATE')
 
             // Find the corresponding item in the inventories table
             const inventoryItem = await models.inventories.findOne({
@@ -769,7 +768,6 @@ const voidPO = async (req, res) => {
                     tenant_id,
                 },
             });
-            console.log(inventoryItem, 'INV ITEM')
 
             if (!inventoryItem) {
                 return res.status(404).json({ message: `Inventory item with Item ID ${inv_item_id}, Warehouse ID ${warehouse_id}, and Tenant ID ${tenant_id} not found.` });
