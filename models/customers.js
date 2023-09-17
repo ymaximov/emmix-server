@@ -123,6 +123,11 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.STRING,
             allowNull: true
         },
+        tax_liable: {
+            type: DataTypes.BOOLEAN,
+            allowNull: true,
+            defaultValue: true
+        },
         bank_code: {
             type: DataTypes.STRING,
             allowNull: true

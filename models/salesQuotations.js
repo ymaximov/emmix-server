@@ -77,6 +77,10 @@ module.exports = (sequelize, DataTypes) => {
                 type: DataTypes.STRING,
                 allowNull: true,
             },
+            tax_rate: {
+                type: DataTypes.INTEGER,
+                allowNull: true,
+            },
             createdAt: {
                 allowNull: false,
                 type: DataTypes.DATE,

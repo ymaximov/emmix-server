@@ -73,7 +73,133 @@ const getSQDataBySqID = async (req, res, next) => {
     }
 };
 
+const addItemToSQ = async (req, res) => {
+    try {
+        const { tenant_id, user_id, inv_item_id, quantity, unit_price, sq_id } = req.body;
+        console.log(req.body, 'req body!!');
+
+        // Calculate the total_price
+        const total_price = quantity * unit_price;
+
+        // Insert the new item into the sales_quotation_items table
+        const createdItem = await models.sales_quotation_items.create({
+            tenant_id,
+            user_id,
+            inv_item_id,
+            quantity,
+            unit_price,
+            total_price,
+            sq_id,
+        });
+
+        // Fetch all items for the corresponding sales quotation (sq_id)
+        const items = await models.sales_quotation_items.findAll({
+            where: { sq_id },
+        });
+
+        // Calculate the new subtotal for the sales quotation
+        const newSubtotal = items.reduce((subtotal, item) => subtotal + item.total_price, 0);
+
+        // Fetch the sales_quotations record
+        const salesQuotation = await models.sales_quotations.findByPk(sq_id);
+
+        if (!salesQuotation) {
+            return res.status(404).json({ error: 'Sales quotation not found' });
+        }
+
+        // Use the existing tax_rate from the sales_quotations table
+        const taxRate = salesQuotation.tax_rate;
+
+        // Calculate the new sales_tax based on tax_rate and newSubtotal
+        let salesTax = 0;
+        if (taxRate !== null && taxRate !== 0) {
+            salesTax = (taxRate / 100) * newSubtotal; // Divide by 100 to convert percentage to decimal
+        }
+
+        // Calculate the new total_amount
+        const totalAmount = newSubtotal + salesTax;
+
+        // Update the sales_quotations record with the new subtotal, calculated sales_tax, and total_amount
+        await salesQuotation.update({
+            subtotal: newSubtotal,
+            sales_tax: salesTax,
+            total_amount: totalAmount,
+        });
+
+        return res.status(200).json({ message: 'Item added to sales quotation successfully', data: createdItem });
+    } catch (error) {
+        console.error('Error adding item to sales quotation:', error);
+        res.status(500).json({ error: 'Failed to add item to sales quotation' });
+    }
+};
+
+
+
+
+
+
+// const addItemToSQ = async (req, res) => {
+//     try {
+//         const { tenant_id, user_id, inv_item_id, quantity, unit_price, sq_id, tax_rate } = req.body;
+//
+//         // Calculate the total_price
+//         const total_price = quantity * unit_price;
+//
+//         // Insert the new item into the sales_quotation_items table
+//         const createdItem = await models.sales_quotation_items.create({
+//             tenant_id,
+//             user_id,
+//             inv_item_id,
+//             quantity,
+//             unit_price,
+//             total_price,
+//             sq_id,
+//             tax_rate
+//         });
+//
+//         // Fetch all items for the corresponding sales quotation (sq_id)
+//         const items = await models.sales_quotation_items.findAll({
+//             where: { sq_id },
+//         });
+//
+//         // Calculate the new subtotal for the sales quotation
+//         const newSubtotal = items.reduce((subtotal, item) => subtotal + item.total_price, 0);
+//
+//         // Fetch the sales_quotations record
+//         const salesQuotation = await models.sales_quotations.findByPk(sq_id);
+//
+//         if (!salesQuotation) {
+//             return res.status(404).json({ error: 'Sales quotation not found' });
+//         }
+//
+//         // Update the sales_quotations record with the new subtotal and total_amount
+//         const salesTax = salesQuotation.sales_tax;
+//
+//         if (salesTax === 0 || salesTax === null) {
+//             // If sales_tax is 0 or null, set total_amount to be the same as subtotal
+//             await salesQuotation.update({
+//                 subtotal: newSubtotal,
+//                 total_amount: newSubtotal,
+//             });
+//         } else {
+//             // Otherwise, calculate total_amount based on sales_tax
+//             await salesQuotation.update({
+//                 subtotal: newSubtotal,
+//                 total_amount: newSubtotal * salesTax,
+//             });
+//         }
+//
+//         return res.status(200).json({ message: 'Item added to sales quotation successfully', data: createdItem });
+//     } catch (error) {
+//         console.error('Error adding item to sales quotation:', error);
+//         res.status(500).json({ error: 'Failed to add item to sales quotation' });
+//     }
+// };
+
+
+
 module.exports = {
     createSalesQuotation,
-    getSQDataBySqID
+    getSQDataBySqID,
+    addItemToSQ
 }
