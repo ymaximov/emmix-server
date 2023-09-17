@@ -8,7 +8,7 @@ module.exports = (sequelize, DataTypes) => {
             SalesQuotation.belongsTo(models.tenants, { foreignKey: 'tenant_id' });
             SalesQuotation.belongsTo(models.customers, { foreignKey: 'customer_id' });
             SalesQuotation.belongsTo(models.users, { foreignKey: 'user_id' });
-            // SalesQuotation.hasMany(models.purchase_order_items, { foreignKey: 'po_id' });
+            SalesQuotation.hasMany(models.sales_quotation_items, { foreignKey: 'sq_id' });
         }
     }
 
