@@ -1048,13 +1048,40 @@ const updateReceivedQuanitiy = async(req, res) => {
 
 const voidPO = async (req, res) => {
     try {
-        // Assuming the request body contains an object with warehouse_id, tenant_id, items (an array of objects with inv_item_id and quantity), and purchaseOrderId
         const { warehouse_id, tenant_id, items, purchaseOrderId } = req.body;
         console.log(req.body, 'REQ BODY')
 
-        if (!warehouse_id || !tenant_id || !items || !Array.isArray(items) || items.length === 0 || !purchaseOrderId) {
+        if (!warehouse_id || !tenant_id || !purchaseOrderId) {
             return res.status(400).json({ message: 'Invalid or empty request body' });
         }
+
+        // Check if items is an empty array
+        if (items.length === 0) {
+            // Update the purchase order status to "void" in the purchase_orders table
+            const purchaseOrderToUpdate = await models.purchase_orders.findOne({
+                where: {
+                    id: purchaseOrderId,
+                    tenant_id,
+                },
+            });
+
+            if (!purchaseOrderToUpdate) {
+                return res.status(404).json({ message: `Purchase order with ID ${purchaseOrderId} and Tenant ID ${tenant_id} not found.` });
+            }
+
+            // Update the status to "void" (assuming "void" is an enum value)
+            purchaseOrderToUpdate.status = 'void';
+
+            // Save the updated purchase order
+            await purchaseOrderToUpdate.save();
+
+            return res.status(200).json({ message: 'Purchase Order Has Been Voided' });
+        }
+
+        // If there are items in the array, proceed with processing them
+
+        // Create an array to store promises for async operations
+        const asyncOperations = [];
 
         // Iterate through the items and update the ordered column for each item
         for (const itemToUpdate of items) {
@@ -1101,10 +1128,13 @@ const voidPO = async (req, res) => {
                 inventoryItem.ordered -= purchaseOrderItem.quantity;
 
                 // Save the updated inventory item
-                await inventoryItem.save();
+                asyncOperations.push(inventoryItem.save());
                 console.log('SAVED');
             }
         }
+
+        // Wait for all inventory updates to complete
+        await Promise.all(asyncOperations);
 
         // Update the purchase order status to "void" in the purchase_orders table
         const purchaseOrderToUpdate = await models.purchase_orders.findOne({
@@ -1133,6 +1163,8 @@ const voidPO = async (req, res) => {
 
 
 
+
+
 // const voidPO = async (req, res) => {
 //     try {
 //         // Assuming the request body contains an object with warehouse_id, tenant_id, items (an array of objects with inv_item_id and quantity), and purchaseOrderId
@@ -1143,27 +1175,22 @@ const voidPO = async (req, res) => {
 //             return res.status(400).json({ message: 'Invalid or empty request body' });
 //         }
 //
-//         // Fetch inventory item flags for all items from the inventory_items table
-//         const itemFlags = await models.inventory_items.findAll({
-//             where: {
-//                 id: items.map(item => item.inv_item_id),
-//             },
-//         });
-//
-//         // Create a map to store the inventory item flags by inv_item_id
-//         const itemFlagsMap = {};
-//         itemFlags.forEach(itemFlag => {
-//             itemFlagsMap[itemFlag.id] = itemFlag.inventory_item;
-//         });
-//
 //         // Iterate through the items and update the ordered column for each item
 //         for (const itemToUpdate of items) {
 //             const { inv_item_id, quantity } = itemToUpdate;
 //
 //             // Check if the item is marked as an inventory item in the inventory_items table
-//             const isInventoryItem = itemFlagsMap[inv_item_id];
+//             const isInventoryItem = await models.inventory_items.findOne({
+//                 where: {
+//                     id: inv_item_id,
+//                 },
+//             });
 //
-//             if (isInventoryItem) {
+//             if (!isInventoryItem) {
+//                 return res.status(404).json({ message: `Inventory item with ID ${inv_item_id} not found.` });
+//             }
+//
+//             if (isInventoryItem.inventory_item) {
 //                 // Find the corresponding item in the inventories table
 //                 const inventoryItem = await models.inventories.findOne({
 //                     where: {
@@ -1177,8 +1204,20 @@ const voidPO = async (req, res) => {
 //                     return res.status(404).json({ message: `Inventory item with Item ID ${inv_item_id}, Warehouse ID ${warehouse_id}, and Tenant ID ${tenant_id} not found.` });
 //                 }
 //
-//                 // Update the ordered column by subtracting the quantity
-//                 inventoryItem.ordered -= quantity;
+//                 // Update the ordered column by subtracting the quantity from the purchase_order_items table
+//                 const purchaseOrderItem = await models.purchase_order_items.findOne({
+//                     where: {
+//                         po_id: purchaseOrderId,
+//                         inv_item_id,
+//                     },
+//                 });
+//
+//                 if (!purchaseOrderItem) {
+//                     return res.status(404).json({ message: `Purchase order item with Item ID ${inv_item_id} and Purchase Order ID ${purchaseOrderId} not found.` });
+//                 }
+//
+//                 // Subtract the quantity from the ordered column
+//                 inventoryItem.ordered -= purchaseOrderItem.quantity;
 //
 //                 // Save the updated inventory item
 //                 await inventoryItem.save();
@@ -1210,6 +1249,8 @@ const voidPO = async (req, res) => {
 //         return res.status(500).json({ message: 'Error updating inventory ordered and voiding purchase order' });
 //     }
 // };
+
+
 
 
 
