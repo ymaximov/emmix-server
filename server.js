@@ -31,6 +31,7 @@ app.use('/api/crm', require('./routes/crm'))
 app.use('/api/vendor', require('./routes/vendor'))
 app.use('/api/purchasing', require('./routes/purchasing'))
 app.use('/api/inventory', require('./routes/inventory'))
+app.use('/api/sales', require('./routes/sales'))
 
 sequelize.sync().then(result => {
     const {SERVER_PORT = 8080} = process.env;
