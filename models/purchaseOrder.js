@@ -65,6 +65,10 @@ module.exports = (sequelize, DataTypes) => {
                 type: DataTypes.FLOAT,
                 allowNull: false,
             },
+            tax_rate: {
+                type: DataTypes.INTEGER,
+                allowNull: true
+            },
             subtotal: {
                 type: DataTypes.FLOAT,
                 allowNull: false,

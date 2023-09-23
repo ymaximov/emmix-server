@@ -78,7 +78,8 @@ const createPO = async (req, res) => {
             sales_tax: purchaseOrderData.sales_tax,
             subtotal: purchaseOrderData.subtotal,
             total_amount: purchaseOrderData.total_amount,
-            reference: purchaseOrderData.reference
+            reference: purchaseOrderData.reference,
+            tax_rate: purchaseOrderData.tax_rate
         });
         console.log('PO CREATED SUCCESS')
 
@@ -295,7 +296,7 @@ const addItemToPurchaseOrder = async (req, res) => {
     try {
         const purchaseOrderId = req.body.po_id;
         const newItemData = req.body;
-        console.log(req.body, 'Req Body')
+        console.log(req.body, 'Req Body');
 
         // Calculate the total_price for the new item
         const newItemTotalPrice = newItemData.unit_price * newItemData.quantity;
@@ -309,7 +310,7 @@ const addItemToPurchaseOrder = async (req, res) => {
             unit_price: newItemData.unit_price,
             total_price: newItemTotalPrice,
         });
-        console.log('created PO Item')
+        console.log('created PO Item');
 
         // Fetch all items for the corresponding purchase order
         const items = await models.purchase_order_items.findAll({
@@ -319,17 +320,29 @@ const addItemToPurchaseOrder = async (req, res) => {
         // Calculate the new subtotal for the purchase order
         const newSubtotal = items.reduce((subtotal, item) => subtotal + item.total_price, 0);
 
-        // Update the purchase order with the new subtotal and total_amount
+        // Find the purchase order associated with this purchaseOrderId
         const purchaseOrder = await models.purchase_orders.findByPk(purchaseOrderId);
         if (!purchaseOrder) {
             return res.status(404).json({ error: 'Purchase order not found' });
         }
 
+        // Update the purchase order with the new subtotal
+        await purchaseOrder.update({ subtotal: newSubtotal });
+
+        // Calculate the new sales_tax based on the new subtotal and tax_rate (considered as a percentage)
+        const taxRatePercentage = purchaseOrder.tax_rate; // Example: 10% tax_rate
+        const taxRateDecimal = taxRatePercentage / 100; // Convert percentage to decimal (0.10)
+        const newSalesTax = newSubtotal * taxRateDecimal;
+
+        // Calculate the new total_amount as the sum of newSalesTax and newSubtotal
+        const newTotalAmount = newSalesTax + newSubtotal;
+
+        // Update the purchase_orders table with the new sales_tax and total_amount
         await purchaseOrder.update({
-            subtotal: newSubtotal,
-            total_amount: newSubtotal + purchaseOrder.sales_tax,
+            sales_tax: newSalesTax,
+            total_amount: newTotalAmount,
         });
-        console.log('updated subtotal')
+        console.log('updated subtotal');
 
         // Check if the item exists in the inventories table for the specific warehouse
         const inventoryItem = await models.inventory_items.findOne({
@@ -366,7 +379,6 @@ const addItemToPurchaseOrder = async (req, res) => {
                 });
             }
         }
-
         res.status(200).json({ message: 'Item added to purchase order successfully', data: createdItem });
     } catch (error) {
         console.error('Error adding item to purchase order:', error);
@@ -376,115 +388,119 @@ const addItemToPurchaseOrder = async (req, res) => {
 
 
 
-const updatePurchaseOrderItem = async (req, res) => {
-    try {
-        const itemId = req.body.item_id;
-        const invItemId = req.body.inv_item_id;
-        const updatedItemData = req.body;
-        console.log(updatedItemData, 'Updated Item Data');
 
-        // Fetch the purchase order item for the specific item and purchase order
-        const purchaseOrderItem = await models.purchase_order_items.findOne({
-            where: {
-                id: itemId,
-            },
-            include: [
-                {
-                    model: models.purchase_orders,
-                    where: {
-                        status: 'open',
-                    },
-                },
-            ],
-        });
 
-        if (!purchaseOrderItem) {
-            return res.status(404).json({ error: 'Purchase order item not found' });
-        }
 
-        // Fetch the current quantity from the purchase order item
-        const currentQuantity = purchaseOrderItem.quantity;
 
-        // Check if the item is an inventory item
-        const inventoryItem = await models.inventory_items.findOne({
-            where: {
-                id: invItemId,
-            },
-        });
-
-        if (inventoryItem && inventoryItem.inventory_item) {
-            // Fetch the current quantity from the inventories table for the specific item, warehouse, and tenant
-            const { tenant_id, warehouse_id } = updatedItemData;
-
-            let inventoryData = await models.inventories.findOne({
-                where: {
-                    tenant_id,
-                    item_id: invItemId,
-                    warehouse_id,
-                },
-            });
-
-            if (!inventoryData) {
-                return res.status(404).json({ error: 'Inventory data not found' });
-            }
-
-            // Subtract the current quantity of the purchase order for that item from the ordered column in inventories
-            inventoryData.ordered -= currentQuantity;
-
-            // Save the updated inventory data with the subtracted quantity
-            await inventoryData.save();
-
-            // Calculate the new total_price based on the NEW quantity from the frontend
-            const newTotalPrice = updatedItemData.unit_price * updatedItemData.quantity;
-
-            // Update the purchase order item with the new data
-            await purchaseOrderItem.update({
-                unit_price: updatedItemData.unit_price,
-                quantity: updatedItemData.quantity,
-                total_price: newTotalPrice, // Updated based on the NEW quantity
-            });
-
-            // Fetch all purchase order items for the specific item
-            const purchaseOrderItems = await models.purchase_order_items.findAll({
-                where: {
-                    inv_item_id: invItemId,
-                },
-                include: [
-                    {
-                        model: models.purchase_orders,
-                        where: {
-                            status: 'open',
-                        },
-                    },
-                ],
-            });
-
-            // Calculate the total ordered quantity from all open purchase orders for the specific item
-            const totalOrderedQuantity = purchaseOrderItems.reduce((totalQuantity, item) => {
-                // Add the quantity of the item in this purchase order item to the total
-                return totalQuantity + item.quantity;
-            }, 0);
-
-            // Add the new totalOrderedQuantity to the "ordered" column in inventories
-            inventoryData.ordered += totalOrderedQuantity;
-
-            // Save the updated inventory data with the added quantity
-            await inventoryData.save();
-        } else {
-            // If it's not an inventory item, update the quantity in purchase_order_items only
-            await purchaseOrderItem.update({
-                unit_price: updatedItemData.unit_price,
-                quantity: updatedItemData.quantity,
-                total_price: updatedItemData.unit_price * updatedItemData.quantity, // Calculate total_price based on the NEW quantity
-            });
-        }
-
-        res.status(200).json({ message: 'Item updated successfully' });
-    } catch (error) {
-        console.error('Error updating purchase order item:', error);
-        res.status(500).json({ error: 'Failed to update item' });
-    }
-};
+// const updatePurchaseOrderItem = async (req, res) => {
+//     try {
+//         const itemId = req.body.item_id;
+//         const invItemId = req.body.inv_item_id;
+//         const updatedItemData = req.body;
+//         console.log(updatedItemData, 'Updated Item Data');
+//
+//         // Fetch the purchase order item for the specific item and purchase order
+//         const purchaseOrderItem = await models.purchase_order_items.findOne({
+//             where: {
+//                 id: itemId,
+//             },
+//             include: [
+//                 {
+//                     model: models.purchase_orders,
+//                     where: {
+//                         status: 'open',
+//                     },
+//                 },
+//             ],
+//         });
+//
+//         if (!purchaseOrderItem) {
+//             return res.status(404).json({ error: 'Purchase order item not found' });
+//         }
+//
+//         // Fetch the current quantity from the purchase order item
+//         const currentQuantity = purchaseOrderItem.quantity;
+//
+//         // Check if the item is an inventory item
+//         const inventoryItem = await models.inventory_items.findOne({
+//             where: {
+//                 id: invItemId,
+//             },
+//         });
+//
+//         if (inventoryItem && inventoryItem.inventory_item) {
+//             // Fetch the current quantity from the inventories table for the specific item, warehouse, and tenant
+//             const { tenant_id, warehouse_id } = updatedItemData;
+//
+//             let inventoryData = await models.inventories.findOne({
+//                 where: {
+//                     tenant_id,
+//                     item_id: invItemId,
+//                     warehouse_id,
+//                 },
+//             });
+//
+//             if (!inventoryData) {
+//                 return res.status(404).json({ error: 'Inventory data not found' });
+//             }
+//
+//             // Subtract the current quantity of the purchase order for that item from the ordered column in inventories
+//             inventoryData.ordered -= currentQuantity;
+//
+//             // Save the updated inventory data with the subtracted quantity
+//             await inventoryData.save();
+//
+//             // Calculate the new total_price based on the NEW quantity from the frontend
+//             const newTotalPrice = updatedItemData.unit_price * updatedItemData.quantity;
+//
+//             // Update the purchase order item with the new data
+//             await purchaseOrderItem.update({
+//                 unit_price: updatedItemData.unit_price,
+//                 quantity: updatedItemData.quantity,
+//                 total_price: newTotalPrice, // Updated based on the NEW quantity
+//             });
+//
+//             // Fetch all purchase order items for the specific item
+//             const purchaseOrderItems = await models.purchase_order_items.findAll({
+//                 where: {
+//                     inv_item_id: invItemId,
+//                 },
+//                 include: [
+//                     {
+//                         model: models.purchase_orders,
+//                         where: {
+//                             status: 'open',
+//                         },
+//                     },
+//                 ],
+//             });
+//
+//             // Calculate the total ordered quantity from all open purchase orders for the specific item
+//             const totalOrderedQuantity = purchaseOrderItems.reduce((totalQuantity, item) => {
+//                 // Add the quantity of the item in this purchase order item to the total
+//                 return totalQuantity + item.quantity;
+//             }, 0);
+//
+//             // Add the new totalOrderedQuantity to the "ordered" column in inventories
+//             inventoryData.ordered += totalOrderedQuantity;
+//
+//             // Save the updated inventory data with the added quantity
+//             await inventoryData.save();
+//         } else {
+//             // If it's not an inventory item, update the quantity in purchase_order_items only
+//             await purchaseOrderItem.update({
+//                 unit_price: updatedItemData.unit_price,
+//                 quantity: updatedItemData.quantity,
+//                 total_price: updatedItemData.unit_price * updatedItemData.quantity, // Calculate total_price based on the NEW quantity
+//             });
+//         }
+//
+//         res.status(200).json({ message: 'Item updated successfully' });
+//     } catch (error) {
+//         console.error('Error updating purchase order item:', error);
+//         res.status(500).json({ error: 'Failed to update item' });
+//     }
+// };
 
 
 
@@ -698,9 +714,6 @@ const updatePurchaseOrderItem = async (req, res) => {
 
 
 
-
-
-
 const deletePurchaseOrderItem = async (req, res) => {
     try {
         console.log('Start');
@@ -724,17 +737,29 @@ const deletePurchaseOrderItem = async (req, res) => {
         // Calculate the new subtotal for the purchase order
         const newSubtotal = items.reduce((subtotal, item) => subtotal + item.total_price, 0);
 
-        // Update the purchase order with the new subtotal and total_amount
+        // Update the purchase order with the new subtotal
         const purchaseOrder = await models.purchase_orders.findByPk(itemToDelete.po_id);
         if (!purchaseOrder) {
             return res.status(404).json({ error: 'Purchase order not found' });
         }
 
+        await purchaseOrder.update({ subtotal: newSubtotal });
+
+        // Calculate the new sales_tax based on the new subtotal and tax_rate (considered as a percentage)
+        const taxRatePercentage = purchaseOrder.tax_rate; // Example: 10% tax_rate
+        const taxRateDecimal = taxRatePercentage / 100; // Convert percentage to decimal (0.10)
+        const newSalesTax = newSubtotal * taxRateDecimal;
+
+        // Calculate the new total_amount as the sum of newSalesTax and newSubtotal
+        const newTotalAmount = newSalesTax + newSubtotal;
+
+        // Update the purchase_orders table with the new sales_tax and total_amount
         await purchaseOrder.update({
-            subtotal: newSubtotal,
-            total_amount: newSubtotal + purchaseOrder.sales_tax,
+            sales_tax: newSalesTax,
+            total_amount: newTotalAmount,
         });
-        console.log('PO UPDATEED')
+        console.log('PO UPDATED')
+
         // Check if the item is an inventory item
         const inventoryItem = await models.inventory_items.findOne({
             where: {
@@ -773,6 +798,81 @@ const deletePurchaseOrderItem = async (req, res) => {
         res.status(500).json({ error: 'Failed to delete item' });
     }
 };
+
+
+
+// const deletePurchaseOrderItem = async (req, res) => {
+//     try {
+//         console.log('Start');
+//         const { quantity, inv_item_id, warehouse_id, tenant_id, itemId } = req.query; // Quantity and other relevant data
+//         // Fetch the item from the purchase_order_items table
+//         console.log(quantity, inv_item_id, warehouse_id, tenant_id, req.query, 'PARAMS');
+//         const itemToDelete = await models.purchase_order_items.findByPk(itemId);
+//
+//         if (!itemToDelete) {
+//             return res.status(404).json({ error: 'Item not found' });
+//         }
+//
+//         // Delete the item from the purchase_order_items table
+//         await itemToDelete.destroy();
+//
+//         // Fetch all items for the corresponding purchase order
+//         const items = await models.purchase_order_items.findAll({
+//             where: { po_id: itemToDelete.po_id },
+//         });
+//
+//         // Calculate the new subtotal for the purchase order
+//         const newSubtotal = items.reduce((subtotal, item) => subtotal + item.total_price, 0);
+//
+//         // Update the purchase order with the new subtotal and total_amount
+//         const purchaseOrder = await models.purchase_orders.findByPk(itemToDelete.po_id);
+//         if (!purchaseOrder) {
+//             return res.status(404).json({ error: 'Purchase order not found' });
+//         }
+//
+//         await purchaseOrder.update({
+//             subtotal: newSubtotal,
+//             total_amount: newSubtotal + purchaseOrder.sales_tax,
+//         });
+//         console.log('PO UPDATEED')
+//         // Check if the item is an inventory item
+//         const inventoryItem = await models.inventory_items.findOne({
+//             where: {
+//                 id: inv_item_id,
+//                 inventory_item: true, // Check if it's an inventory item
+//             },
+//         });
+//
+//         if (inventoryItem) {
+//             // Subtract the quantity from the "ordered" column in the inventories table
+//             const inventoryData = await models.inventories.findOne({
+//                 where: {
+//                     tenant_id,
+//                     item_id: inv_item_id,
+//                     warehouse_id,
+//                 },
+//             });
+//
+//             if (!inventoryData) {
+//                 return res.status(404).json({ error: 'Inventory data not found' });
+//             }
+//
+//             // Ensure that the quantity to subtract does not exceed the current "ordered" quantity
+//             const newOrderedQuantity = Math.max(0, inventoryData.ordered - quantity);
+//
+//             // Update the "ordered" column in the inventories table
+//             await inventoryData.update({
+//                 ordered: newOrderedQuantity,
+//             });
+//         }
+//
+//         res.status(200).json({ message: 'Item deleted successfully' });
+//     } catch (error) {
+//         console.log('there was an error');
+//         console.error('Error deleting purchase order item:', error);
+//         res.status(500).json({ error: 'Failed to delete item' });
+//     }
+// };
 
 
 
@@ -1163,6 +1263,115 @@ const voidPO = async (req, res) => {
 
 
 
+const updatePurchaseOrderItem = async (req, res) => {
+    try {
+        const itemId = req.body.item_id;
+        const invItemId = req.body.inv_item_id;
+        const updatedItemData = req.body;
+        console.log(updatedItemData, 'Updated Item Data');
+
+        // Fetch the purchase order item for the specific item and purchase order
+        const purchaseOrderItem = await models.purchase_order_items.findOne({
+            where: {
+                id: itemId,
+            },
+            include: [
+                {
+                    model: models.purchase_orders,
+                    where: {
+                        status: 'open',
+                    },
+                },
+            ],
+        });
+
+        if (!purchaseOrderItem) {
+            return res.status(404).json({ error: 'Purchase order item not found' });
+        }
+
+        // Fetch the current quantity and unit_price from the purchase order item
+        const currentQuantity = purchaseOrderItem.quantity;
+        const currentUnitPrice = purchaseOrderItem.unit_price;
+
+        // Calculate the new total_price based on the NEW quantity from the frontend and the current unit_price
+        const newTotalPrice = updatedItemData.unit_price * updatedItemData.quantity;
+
+        // Update the purchase order item with the new data
+        await purchaseOrderItem.update({
+            unit_price: updatedItemData.unit_price,
+            quantity: updatedItemData.quantity,
+            total_price: newTotalPrice, // Updated based on the NEW quantity
+        });
+
+        // Fetch all purchase order items for the specific purchase order (po_id)
+        const purchaseOrderItems = await models.purchase_order_items.findAll({
+            where: {
+                po_id: purchaseOrderItem.po_id,
+            },
+        });
+
+        // Calculate the new subtotal for the purchase order
+        const newSubtotal = purchaseOrderItems.reduce((subtotal, item) => subtotal + item.total_price, 0);
+
+        // Find the purchase order associated with this purchaseOrderId
+        const purchaseOrder = await models.purchase_orders.findByPk(purchaseOrderItem.po_id);
+        if (!purchaseOrder) {
+            return res.status(404).json({ error: 'Purchase order not found' });
+        }
+
+        // Calculate the new sales_tax based on the new subtotal and tax_rate (considered as a percentage)
+        const taxRatePercentage = purchaseOrder.tax_rate; // Example: 10% tax_rate
+        const taxRateDecimal = taxRatePercentage / 100; // Convert percentage to decimal (0.10)
+        const newSalesTax = newSubtotal * taxRateDecimal;
+
+        // Calculate the new total_amount as the sum of newSalesTax and newSubtotal
+        const newTotalAmount = newSalesTax + newSubtotal;
+
+        // Update the purchase_orders table with the new subtotal, sales_tax, and total_amount
+        await purchaseOrder.update({
+            subtotal: newSubtotal,
+            sales_tax: newSalesTax,
+            total_amount: newTotalAmount,
+        });
+
+        // Check if the item exists in the inventories table for the specific warehouse
+        const inventoryItem = await models.inventory_items.findOne({
+            where: {
+                id: invItemId,
+            },
+        });
+
+        if (inventoryItem && inventoryItem.inventory_item) {
+            // Fetch the current ordered quantity from the inventories table for the specific item, warehouse, and tenant
+            const { tenant_id, warehouse_id } = updatedItemData;
+            let inventoryData = await models.inventories.findOne({
+                where: {
+                    tenant_id,
+                    item_id: invItemId,
+                    warehouse_id,
+                },
+            });
+
+            if (!inventoryData) {
+                return res.status(404).json({ error: 'Inventory data not found' });
+            }
+
+            // Subtract the current quantity of the purchase order item from the ordered column in inventories
+            inventoryData.ordered -= currentQuantity;
+
+            // Add the new quantity of the purchase order item to the ordered column in inventories
+            inventoryData.ordered += updatedItemData.quantity;
+
+            // Save the updated inventory data with the adjusted quantities
+            await inventoryData.save();
+        }
+
+        res.status(200).json({ message: 'Item updated successfully' });
+    } catch (error) {
+        console.error('Error updating purchase order item:', error);
+        res.status(500).json({ error: 'Failed to update item' });
+    }
+};
 
 
 // const voidPO = async (req, res) => {
