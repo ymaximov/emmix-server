@@ -255,10 +255,67 @@ const updateSQItem = async (req, res) => {
 };
 
 
+const deleteSQItemAndUpdate = async (req, res) => {
+    try {
+        const tenant_id = req.query.tenant_id;
+        const item_id = req.query.item_id;
+
+        // Find the sales quotation item by tenant_id and ID
+        const salesQuotationItem = await models.sales_quotation_items.findOne({
+            where: { tenant_id, id: item_id },
+        });
+
+        if (!salesQuotationItem) {
+            console.error('Sales quotation item not found for the provided tenant_id and ID.');
+            return res.status(404).json({ error: 'Item not found' });
+        }
+
+        // Find all sales quotation items associated with the same sq_id (excluding the item to be deleted)
+        const relatedItems = await models.sales_quotation_items.findAll({
+            where: { sq_id: salesQuotationItem.sq_id, id: { [models.Sequelize.Op.ne]: item_id } },
+        });
+
+        // Calculate the new subtotal as the sum of total_price for all remaining related items
+        const newSubtotal = relatedItems.reduce((sum, item) => sum + item.total_price, 0);
+
+        // Find the sales quotation associated with this sq_id
+        const salesQuotation = await models.sales_quotations.findByPk(salesQuotationItem.sq_id);
+
+        // Calculate the new sales_tax based on the new subtotal and tax_rate (considered as a percentage)
+        const taxRatePercentage = salesQuotation.tax_rate; // Example: 10% tax_rate
+        const taxRateDecimal = taxRatePercentage / 100; // Convert percentage to decimal (0.10)
+        const newSalesTax = newSubtotal * taxRateDecimal;
+
+        // Calculate the new total_amount as the sum of newSubtotal and newSalesTax
+        const newTotalAmount = newSubtotal + newSalesTax;
+
+        // Delete the sales quotation item from the database
+        await salesQuotationItem.destroy();
+
+        // Update the sales_quotations table with the new values
+        await salesQuotation.update({
+            subtotal: newSubtotal,
+            sales_tax: newSalesTax,
+            total_amount: newTotalAmount,
+        });
+
+        console.log('Deleted sales_quotation_item and updated sales_quotations table successfully.');
+        return res.status(200).json({ message: 'Item deleted and sales_quotations updated successfully' });
+    } catch (error) {
+        console.error('Error deleting item and updating tables:', error);
+        return res.status(500).json({ error: 'Internal Server Error' });
+    }
+};
+
+
+
+
+
 
 module.exports = {
     createSalesQuotation,
     getSQDataBySqID,
     addItemToSQ,
-    updateSQItem
+    updateSQItem,
+    deleteSQItemAndUpdate
 }

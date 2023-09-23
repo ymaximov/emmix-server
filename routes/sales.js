@@ -7,5 +7,6 @@ router.post('/create-sales-quotation', auth, salesController.createSalesQuotatio
 router.get('/get-sq-by-id/:id', auth, salesController.getSQDataBySqID)
 router.post('/add-item-to-sq', auth, salesController.addItemToSQ)
 router.put('/update-item-sq', auth, salesController.updateSQItem)
+router.delete('/delete-item-sq', auth, salesController.deleteSQItemAndUpdate)
 
 module.exports = router
