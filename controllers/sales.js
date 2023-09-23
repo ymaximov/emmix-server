@@ -196,10 +196,69 @@ const addItemToSQ = async (req, res) => {
 //     }
 // };
 
+const updateSQItem = async (req, res) => {
+    try {
+        const tenant_id = req.body.tenant_id;
+        const item_id = req.body.item_id;
+        const newQuantity = req.body.quantity;
+        const newUnitPrice = req.body.unit_price;
+
+        // Find the sales quotation item by tenant_id and ID
+        const salesQuotationItem = await models.sales_quotation_items.findOne({
+            where: { tenant_id, id: item_id },
+        });
+
+        if (!salesQuotationItem) {
+            console.error('Sales quotation item not found for the provided tenant_id and ID.');
+            return res.status(404).json({ error: 'Item not found' });
+        }
+
+        // Update the sales quotation item with the new quantity and unit_price
+        await salesQuotationItem.update({ quantity: newQuantity, unit_price: newUnitPrice });
+
+        // Calculate the new total_price based on the updated quantity and unit_price
+        const newTotalPrice = newQuantity * newUnitPrice;
+
+        // Update the sales quotation item with the new total_price
+        await salesQuotationItem.update({ total_price: newTotalPrice });
+
+        // Find all sales quotation items associated with the same sq_id
+        const relatedItems = await models.sales_quotation_items.findAll({
+            where: { sq_id: salesQuotationItem.sq_id },
+        });
+        const newSubtotal = relatedItems.reduce((sum, item) => sum + item.total_price, 0);
+
+        // Find the sales quotation associated with this sq_id
+        const salesQuotation = await models.sales_quotations.findByPk(salesQuotationItem.sq_id);
+
+        // Calculate the new sales_tax based on the new subtotal and tax_rate (considered as a percentage)
+        const taxRatePercentage = salesQuotation.tax_rate; // Example: 10% tax_rate
+        const taxRateDecimal = taxRatePercentage / 100; // Convert percentage to decimal (0.10)
+        const newSalesTax = newSubtotal * taxRateDecimal;
+
+        // Calculate the new total_amount as the sum of newSubtotal and newSalesTax
+        const newTotalAmount = newSubtotal + newSalesTax;
+
+        // Update the sales_quotations table with the new values
+        await salesQuotation.update({
+            subtotal: newSubtotal,
+            sales_tax: newSalesTax,
+            total_amount: newTotalAmount,
+        });
+
+        console.log('Updated sales_quotation_items and sales_quotations tables successfully.');
+        return res.status(200).json({ message: 'Item updated successfully' });
+    } catch (error) {
+        console.error('Error updating tables:', error);
+        return res.status(500).json({ error: 'Internal Server Error' });
+    }
+};
+
 
 
 module.exports = {
     createSalesQuotation,
     getSQDataBySqID,
-    addItemToSQ
+    addItemToSQ,
+    updateSQItem
 }
