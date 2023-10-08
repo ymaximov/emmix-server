@@ -62,7 +62,7 @@ module.exports = (sequelize, DataTypes) => {
                 defaultValue: 'open',
             },
             sales_tax: {
-                type: DataTypes.FLOAT,
+                type: DataTypes.DECIMAL(10, 2),
                 allowNull: false,
             },
             tax_rate: {
@@ -70,11 +70,11 @@ module.exports = (sequelize, DataTypes) => {
                 allowNull: true
             },
             subtotal: {
-                type: DataTypes.FLOAT,
+                type: DataTypes.DECIMAL(10, 2),
                 allowNull: false,
             },
             total_amount: {
-                type: DataTypes.FLOAT,
+                type: DataTypes.DECIMAL(10, 2),
                 allowNull: true,
             },
             invoiced: {
