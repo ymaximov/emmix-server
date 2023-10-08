@@ -11,6 +11,7 @@ router.delete('/delete-line-item', auth, purchasingController.deletePurchaseOrde
 router.put('/update-po', auth, purchasingController.updatePurchaseOrder)
 router.get('/get-all-po-by-tenant/:id', auth, purchasingController.getPurchaseOrdersByTenant)
 router.post('/get-po-data-for-gr', auth, purchasingController.convertPOToGoodsReceipt)
+router.post('/get-po-data-for-ap-invoice', auth, purchasingController.convertPOToAPInvoice)
 router.put('/receiving/update-rec-quantity/:id', auth, purchasingController.updateReceivedQuanitiy)
 router.put('/void-po', auth, purchasingController.voidPO)
 

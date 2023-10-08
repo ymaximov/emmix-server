@@ -75,15 +75,25 @@ const createPO = async (req, res) => {
             user_id: purchaseOrderData.user_id,
             warehouse_id: purchaseOrderData.warehouse_id,
             due_date: purchaseOrderData.due_date,
-            sales_tax: purchaseOrderData.sales_tax,
-            subtotal: purchaseOrderData.subtotal,
-            total_amount: purchaseOrderData.total_amount,
+            sales_tax: 0,
+            subtotal: 0,
+            total_amount: 0,
             reference: purchaseOrderData.reference,
             tax_rate: purchaseOrderData.tax_rate
         });
         console.log('PO CREATED SUCCESS')
 
         const poId = createdPurchaseOrder.id; // Assuming your model has an 'id' field
+
+        // Fetch warehouse data
+        const warehouse = await models.warehouses.findOne({
+            where: { id: purchaseOrderData.warehouse_id }
+        });
+
+        // Fetch vendor data
+        const vendor = await models.vendors.findOne({
+            where: { id: purchaseOrderData.vendor_id }
+        });
 
         // Insert each item into purchaseorderitem table and update inventory if needed
         for (const item of purchaseOrderData.items) {
@@ -142,15 +152,19 @@ const createPO = async (req, res) => {
 
         const data = {
             createdPurchaseOrder,
-            items: purchaseOrderData.items
+            items: purchaseOrderData.items,
+            warehouse, // Include warehouse data in the response
+            vendor // Include vendor data in the response
         };
 
-        res.status(200).json({ message: 'Purchase order created successfully', data: poId });
+        res.status(200).json({ message: 'Purchase order created successfully', data });
     } catch (error) {
         console.error('Error creating purchase order:', error);
         res.status(500).json({ error: 'Please fill out all required data' });
     }
 };
+
+
 
 
 const getPODataByPOID = async (req, res, next) => {
@@ -298,8 +312,11 @@ const addItemToPurchaseOrder = async (req, res) => {
         const newItemData = req.body;
         console.log(req.body, 'Req Body');
 
-        // Calculate the total_price for the new item
-        const newItemTotalPrice = newItemData.unit_price * newItemData.quantity;
+        // Calculate the total_price for the new item and round to 2 decimal places
+        const newItemTotalPrice = (newItemData.unit_price * newItemData.quantity);
+
+        // Format the total price with two decimal places
+        const formattedTotalPrice = newItemTotalPrice.toFixed(2);
 
         // Insert the new item into the purchase_order_items table
         const createdItem = await models.purchase_order_items.create({
@@ -308,7 +325,7 @@ const addItemToPurchaseOrder = async (req, res) => {
             inv_item_id: newItemData.inv_item_id,
             quantity: newItemData.quantity,
             unit_price: newItemData.unit_price,
-            total_price: newItemTotalPrice,
+            total_price: formattedTotalPrice, // Formatted to always have two decimal places
         });
         console.log('created PO Item');
 
@@ -318,7 +335,7 @@ const addItemToPurchaseOrder = async (req, res) => {
         });
 
         // Calculate the new subtotal for the purchase order
-        const newSubtotal = items.reduce((subtotal, item) => subtotal + item.total_price, 0);
+        const newSubtotal = items.reduce((subtotal, item) => subtotal + parseFloat(item.total_price), 0).toFixed(2);
 
         // Find the purchase order associated with this purchaseOrderId
         const purchaseOrder = await models.purchase_orders.findByPk(purchaseOrderId);
@@ -332,10 +349,10 @@ const addItemToPurchaseOrder = async (req, res) => {
         // Calculate the new sales_tax based on the new subtotal and tax_rate (considered as a percentage)
         const taxRatePercentage = purchaseOrder.tax_rate; // Example: 10% tax_rate
         const taxRateDecimal = taxRatePercentage / 100; // Convert percentage to decimal (0.10)
-        const newSalesTax = newSubtotal * taxRateDecimal;
+        const newSalesTax = (newSubtotal * taxRateDecimal).toFixed(2);
 
         // Calculate the new total_amount as the sum of newSalesTax and newSubtotal
-        const newTotalAmount = newSalesTax + newSubtotal;
+        const newTotalAmount = (parseFloat(newSalesTax) + parseFloat(newSubtotal)).toFixed(2);
 
         // Update the purchase_orders table with the new sales_tax and total_amount
         await purchaseOrder.update({
@@ -385,6 +402,10 @@ const addItemToPurchaseOrder = async (req, res) => {
         res.status(500).json({ error: 'Failed to add item to purchase order' });
     }
 };
+
+
+
+
 
 
 
@@ -735,7 +756,7 @@ const deletePurchaseOrderItem = async (req, res) => {
         });
 
         // Calculate the new subtotal for the purchase order
-        const newSubtotal = items.reduce((subtotal, item) => subtotal + item.total_price, 0);
+        const newSubtotal = items.reduce((subtotal, item) => subtotal + parseFloat(item.total_price), 0).toFixed(2);
 
         // Update the purchase order with the new subtotal
         const purchaseOrder = await models.purchase_orders.findByPk(itemToDelete.po_id);
@@ -748,10 +769,10 @@ const deletePurchaseOrderItem = async (req, res) => {
         // Calculate the new sales_tax based on the new subtotal and tax_rate (considered as a percentage)
         const taxRatePercentage = purchaseOrder.tax_rate; // Example: 10% tax_rate
         const taxRateDecimal = taxRatePercentage / 100; // Convert percentage to decimal (0.10)
-        const newSalesTax = newSubtotal * taxRateDecimal;
+        const newSalesTax = (newSubtotal * taxRateDecimal).toFixed(2);
 
         // Calculate the new total_amount as the sum of newSalesTax and newSubtotal
-        const newTotalAmount = newSalesTax + newSubtotal;
+        const newTotalAmount = (parseFloat(newSalesTax) + parseFloat(newSubtotal)).toFixed(2);
 
         // Update the purchase_orders table with the new sales_tax and total_amount
         await purchaseOrder.update({
@@ -798,6 +819,7 @@ const deletePurchaseOrderItem = async (req, res) => {
         res.status(500).json({ error: 'Failed to delete item' });
     }
 };
+
 
 
 
@@ -1119,6 +1141,143 @@ const convertPOToGoodsReceipt = async (req, res) => {
     }
 };
 
+const convertPOToAPInvoice = async (req, res) => {
+    const transaction = await models.sequelize.transaction();
+
+    try {
+        const { poNo, tenant_id } = req.body;
+
+        let goodsReceipt;
+        let goodsReceiptItems = []; // Define goodsReceiptItems in the outer scope
+
+        // Find an existing goods receipt for the given purchase order (po_id)
+        const existingGoodsReceipt = await models.goods_receipts.findOne({
+            where: {
+                po_id: poNo,
+                tenant_id,
+            },
+        });
+
+        if (existingGoodsReceipt) {
+            // Fetch existing goods_receipt_items for this goods_receipt
+            goodsReceipt = existingGoodsReceipt;
+
+            // Fetch goods_receipt_items associated with the goods_receipt
+            goodsReceiptItems = await models.goods_receipt_items.findAll({
+                where: {
+                    goods_receipt_id: goodsReceipt.id,
+                    tenant_id,
+                },
+                include: [
+                    {
+                        model: models.inventory_items,
+                        attributes: ['id', 'item_name', 'manuf_sku', 'barcode'],
+                    },
+                ],
+            });
+        } else {
+            // Create a new goods receipt and use warehouse_id and vendor_id from the purchase order
+            const purchaseOrder = await models.purchase_orders.findOne({
+                where: {
+                    id: poNo,
+                    tenant_id,
+                    status: 'open',
+                },
+            });
+
+            if (!purchaseOrder) {
+                await transaction.rollback();
+                return res.status(404).json({ message: 'No open purchase orders found' });
+            }
+
+            goodsReceipt = await models.goods_receipts.create(
+                {
+                    tenant_id,
+                    warehouse_id: purchaseOrder.warehouse_id,
+                    vendor_id: purchaseOrder.vendor_id,
+                    po_id: poNo,
+                    buyer_id: purchaseOrder.user_id,
+                },
+                { transaction }
+            );
+
+            // Fetch associated items for the purchase order, including the inventory_items data
+            const items = await models.purchase_order_items.findAll({
+                where: {
+                    po_id: poNo,
+                    tenant_id,
+                },
+                include: [
+                    {
+                        model: models.inventory_items,
+                        attributes: ['id'],
+                    },
+                ],
+            });
+
+            // Create goods_receipt_items for each item
+            const createdItems = [];
+            for (const item of items) {
+                const goodsReceiptItem = await models.goods_receipt_items.create(
+                    {
+                        tenant_id,
+                        goods_receipt_id: goodsReceipt.id,
+                        inv_item_id: item.inventory_item.id,
+                        quantity: item.quantity,
+                    },
+                    { transaction }
+                );
+
+                // Include the ID of the item in the created goods_receipt_item
+                goodsReceiptItem.dataValues.inventory_item_id = item.inventory_item.id;
+                createdItems.push(goodsReceiptItem);
+            }
+        }
+
+        // Commit the transaction
+        await transaction.commit();
+
+        // Fetch the goods_receipt_items again (including the newly created ones)
+        goodsReceiptItems = await models.goods_receipt_items.findAll({
+            where: {
+                goods_receipt_id: goodsReceipt.id,
+                tenant_id,
+            },
+            include: [
+                {
+                    model: models.inventory_items,
+                    attributes: ['id', 'item_name', 'manuf_sku', 'barcode'],
+                },
+            ],
+        });
+
+        // Build the response object with the goodsReceipt, purchase_order, and user details
+        const response = {
+            message: existingGoodsReceipt ? 'Goods Receipt Fetched Successfully' : 'Goods Receipt Created Successfully',
+            data: {
+                goodsReceipt: {
+                    ...goodsReceipt.toJSON(),
+                    items: goodsReceiptItems.map((item) => ({
+                        id: item.dataValues.inventory_item.id, // Include the ID of the item in the response
+                        ...item.toJSON(),
+                        inventory_item: item.inventory_item,
+                    })),
+                },
+            },
+        };
+
+        res.status(200).json(response);
+    } catch (error) {
+        console.error('Error fetching or creating goods receipt, or goods receipt items:', error);
+
+        await transaction.rollback();
+
+        res.status(500).json({ message: 'Error fetching or creating goods receipt, or goods receipt items' });
+    }
+};
+
+
+
 const updateReceivedQuanitiy = async(req, res) => {
     try {
         const itemId = req.params.id;
@@ -1293,10 +1452,11 @@ const updatePurchaseOrderItem = async (req, res) => {
         const currentQuantity = purchaseOrderItem.quantity;
         const currentUnitPrice = purchaseOrderItem.unit_price;
 
-        // Calculate the new total_price based on the NEW quantity from the frontend and the current unit_price
-        const newTotalPrice = updatedItemData.unit_price * updatedItemData.quantity;
+        // Calculate the new total_price based on the NEW quantity from the frontend and the current unit_price,
+        // and round to 2 decimal places
+        const newTotalPrice = (updatedItemData.unit_price * updatedItemData.quantity).toFixed(2);
 
-        // Update the purchase order item with the new data
+        // Update the purchase order item with the new data, ensuring that total_price is rounded to 2 decimal places
         await purchaseOrderItem.update({
             unit_price: updatedItemData.unit_price,
             quantity: updatedItemData.quantity,
@@ -1310,8 +1470,8 @@ const updatePurchaseOrderItem = async (req, res) => {
             },
         });
 
-        // Calculate the new subtotal for the purchase order
-        const newSubtotal = purchaseOrderItems.reduce((subtotal, item) => subtotal + item.total_price, 0);
+        // Calculate the new subtotal for the purchase order, round to 2 decimal places
+        const newSubtotal = purchaseOrderItems.reduce((subtotal, item) => subtotal + parseFloat(item.total_price), 0).toFixed(2);
 
         // Find the purchase order associated with this purchaseOrderId
         const purchaseOrder = await models.purchase_orders.findByPk(purchaseOrderItem.po_id);
@@ -1322,12 +1482,12 @@ const updatePurchaseOrderItem = async (req, res) => {
         // Calculate the new sales_tax based on the new subtotal and tax_rate (considered as a percentage)
         const taxRatePercentage = purchaseOrder.tax_rate; // Example: 10% tax_rate
         const taxRateDecimal = taxRatePercentage / 100; // Convert percentage to decimal (0.10)
-        const newSalesTax = newSubtotal * taxRateDecimal;
+        const newSalesTax = (newSubtotal * taxRateDecimal).toFixed(2);
 
-        // Calculate the new total_amount as the sum of newSalesTax and newSubtotal
-        const newTotalAmount = newSalesTax + newSubtotal;
+        // Calculate the new total_amount as the sum of newSalesTax and newSubtotal, round to 2 decimal places
+        const newTotalAmount = (parseFloat(newSalesTax) + parseFloat(newSubtotal)).toFixed(2);
 
-        // Update the purchase_orders table with the new subtotal, sales_tax, and total_amount
+        // Update the purchase_orders table with the new subtotal, sales_tax, and total_amount, rounding them to 2 decimal places
         await purchaseOrder.update({
             subtotal: newSubtotal,
             sales_tax: newSalesTax,
@@ -1360,7 +1520,7 @@ const updatePurchaseOrderItem = async (req, res) => {
             inventoryData.ordered -= currentQuantity;
 
             // Add the new quantity of the purchase order item to the ordered column in inventories
-            inventoryData.ordered += updatedItemData.quantity;
+            inventoryData.ordered += parseFloat(updatedItemData.quantity);
 
             // Save the updated inventory data with the adjusted quantities
             await inventoryData.save();
@@ -1473,5 +1633,6 @@ module.exports = {
     convertPOToGoodsReceipt,
 getPurchaseOrdersByTenant,
     updateReceivedQuanitiy,
-    voidPO
+    voidPO,
+    convertPOToAPInvoice
 }
