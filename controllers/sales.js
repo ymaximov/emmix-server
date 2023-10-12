@@ -453,7 +453,7 @@ const updateSQItem = async (req, res) => {
         await salesQuotationItem.update({ quantity: newQuantity, unit_price: newUnitPrice });
 
         // Calculate the new total_price based on the updated quantity and unit_price
-        const newTotalPrice = newQuantity * newUnitPrice;
+        const newTotalPrice = (newQuantity * newUnitPrice).toFixed(2); // Ensure two decimal places
 
         // Update the sales quotation item with the new total_price
         await salesQuotationItem.update({ total_price: newTotalPrice });
@@ -462,7 +462,7 @@ const updateSQItem = async (req, res) => {
         const relatedItems = await models.sales_quotation_items.findAll({
             where: { sq_id: salesQuotationItem.sq_id },
         });
-        const newSubtotal = relatedItems.reduce((sum, item) => sum + item.total_price, 0);
+        const newSubtotal = relatedItems.reduce((sum, item) => sum + parseFloat(item.total_price), 0).toFixed(2);
 
         // Find the sales quotation associated with this sq_id
         const salesQuotation = await models.sales_quotations.findByPk(salesQuotationItem.sq_id);
@@ -470,10 +470,10 @@ const updateSQItem = async (req, res) => {
         // Calculate the new sales_tax based on the new subtotal and tax_rate (considered as a percentage)
         const taxRatePercentage = salesQuotation.tax_rate; // Example: 10% tax_rate
         const taxRateDecimal = taxRatePercentage / 100; // Convert percentage to decimal (0.10)
-        const newSalesTax = newSubtotal * taxRateDecimal;
+        const newSalesTax = (newSubtotal * taxRateDecimal).toFixed(2);
 
         // Calculate the new total_amount as the sum of newSubtotal and newSalesTax
-        const newTotalAmount = newSubtotal + newSalesTax;
+        const newTotalAmount = (parseFloat(newSalesTax) + parseFloat(newSubtotal)).toFixed(2);
 
         // Update the sales_quotations table with the new values
         await salesQuotation.update({
@@ -489,6 +489,7 @@ const updateSQItem = async (req, res) => {
         return res.status(500).json({ error: 'Internal Server Error' });
     }
 };
+
 
 
 const deleteSQItemAndUpdate = async (req, res) => {
