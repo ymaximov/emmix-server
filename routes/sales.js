@@ -5,6 +5,7 @@ const salesController = require('../controllers/sales')
 
 router.post('/create-sales-quotation', auth, salesController.createSalesQuotation)
 router.post('/create-sales-order', auth, salesController.createSalesOrder)
+router.post('/convert-sq-to-so', auth, salesController.convertSQToSO)
 router.get('/get-sq-by-id/:id', auth, salesController.getSQDataBySqID)
 router.get('/get-so-by-id/:id', auth, salesController.getSODataBySoID)
 router.post('/add-item-to-sq', auth, salesController.addItemToSQ)

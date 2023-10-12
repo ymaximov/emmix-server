@@ -542,6 +542,109 @@ const deleteSQItemAndUpdate = async (req, res) => {
 };
 
 
+const convertSQToSO = async (req, res) => {
+    try {
+        const salesQuotationId = req.body.sq_id
+        const tenant_id = req.body.tenant_id
+        // Retrieve sales quotation data
+        const salesQuotation = await models.sales_quotations.findByPk(salesQuotationId, {
+            include: [{ model: models.sales_quotation_items }],
+        });
+
+        if (!salesQuotation) {
+            // Sales quotation not found
+            return { success: false, message: 'Sales quotation not found' };
+        }
+
+        // Create a new sales order based on the sales quotation data
+        const salesOrder = await models.sales_orders.create({
+            tenant_id,
+            user_id: salesQuotation.user_id,
+            customer_id: salesQuotation.customer_id,
+            due_date: salesQuotation.due_date,
+            posting_date: salesQuotation.posting_date,
+            sales_tax: salesQuotation.sales_tax,
+            subtotal: salesQuotation.subtotal,
+            total_amount: salesQuotation.total_amount,
+            reference: salesQuotation.reference,
+            tax_rate: salesQuotation.tax_rate,
+            // Other relevant fields
+        });
+
+        // Loop through sales quotation items and create corresponding sales order items
+        for (const item of salesQuotation.sales_quotation_items) {
+            const { inv_item_id, quantity, unit_price, total_price } = item;
+
+            // Find the inventory item to get the warehouse_id
+            const inventoryItem = await models.inventory_items.findOne({
+                where: {
+                    tenant_id,
+                    id: inv_item_id,
+                },
+            });
+
+            if (!inventoryItem) {
+                return { success: false, message: 'Inventory item not found' };
+            }
+
+            const warehouseId = inventoryItem.default_wh;
+
+            // Create a new item in the sales_order_items table
+            await models.sales_order_items.create({
+                tenant_id,
+                so_id: salesOrder.id, // Assign the sales order ID
+                inv_item_id,
+                quantity,
+                unit_price,
+                total_price,
+                // Include other relevant fields from the sales quotation item
+            });
+
+            // Update inventories for each item within the specified warehouse
+            const inventoryData = await models.inventories.findOne({
+                where: {
+                    tenant_id,
+                    item_id: inv_item_id,
+                    warehouse_id: warehouseId, // Include the warehouse_id in the query
+                },
+            });
+
+            if (inventoryData) {
+                // Update available and committed quantities
+                const currentAvailableQuantity = inventoryData.available || 0;
+                const currentCommittedQuantity = inventoryData.committed || 0;
+
+                // Calculate the updated available and committed quantities
+                const updatedAvailableQuantity = (currentAvailableQuantity - quantity) || -quantity;
+                const updatedCommittedQuantity = currentCommittedQuantity + quantity;
+
+                await inventoryData.update({
+                    available: updatedAvailableQuantity,
+                    committed: updatedCommittedQuantity,
+                });
+            } else {
+                // If no inventory data exists, create a new entry
+                await models.inventories.create({
+                    tenant_id,
+                    item_id: inv_item_id,
+                    warehouse_id: warehouseId,
+                    available: -quantity, // Set as the negative quantity
+                    committed: quantity, // Set as the newly added quantity
+                    // Other columns as needed
+                });
+            }
+
+            await salesQuotation.update({
+                status: 'closed', // Assuming "closed" is one of the enum values
+            });
+        }
+
+        res.status(200).json({ message: 'Sales Quotation Converted Successfully', salesOrderId: salesOrder.id })
+    } catch (error) {
+        console.error('Error converting sales quotation to sales order:', error);
+        return { success: false, message: 'Failed to convert sales quotation to sales order' };
+    }
+};
 
 
 
@@ -554,5 +657,6 @@ module.exports = {
     updateSQItem,
     deleteSQItemAndUpdate,
     createSalesOrder,
-    addItemToSalesOrder
+    addItemToSalesOrder,
+    convertSQToSO
 }
