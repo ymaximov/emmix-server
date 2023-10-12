@@ -38,7 +38,7 @@ module.exports = (sequelize, DataTypes) => {
             },
             sq_id: {
                 type: DataTypes.INTEGER,
-                allowNull: false,
+                allowNull: true,
                 references: {
                     model: 'sales_quotations',
                     key: 'id',
@@ -54,11 +54,11 @@ module.exports = (sequelize, DataTypes) => {
             },
             due_date: {
                 type: DataTypes.DATE,
-                allowNull: false,
+                allowNull: true,
             },
             posting_date: {
                 type: DataTypes.DATE,
-                allowNull: false,
+                allowNull: true,
             },
             status: {
                 type: DataTypes.ENUM('open', 'closed', 'void'),

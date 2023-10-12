@@ -8,7 +8,25 @@ const CryptoJS = require('crypto-js');
 const createSalesQuotation = async(req, res) => {
     try{
         console.log(req.body, 'Req body')
-        const createdSalesOrder = await models.sales_quotations.create(req.body)
+        const createdSalesQuotation = await models.sales_quotations.create(req.body)
+
+        const id = createdSalesQuotation.id
+        console.log(id, 'SQ ID')
+
+        res.status(200).json({ message: 'Sales quotation created successfully', data: id });
+
+    } catch (error) {
+        console.error('Error creating purchase order:', error);
+        console.log(error, 'ERROR')
+        res.status(500).json({ error: 'Please fill out all required data' });
+    }
+
+}
+
+const createSalesOrder = async(req, res) => {
+    try{
+        console.log(req.body, 'Req body')
+        const createdSalesOrder = await models.sales_orders.create(req.body)
 
         const id = createdSalesOrder.id
         console.log(id, 'SQ ID')
@@ -65,6 +83,56 @@ const getSQDataBySqID = async (req, res, next) => {
         res.status(200).send({
             message: 'Sales Quotation, Items, and Details have been fetched successfully',
             salesQuotation,
+        });
+        console.log('Data pushed to front');
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching Purchase Order, Items, and Details' });
+        console.error(error, 'ERROR');
+    }
+};
+
+const getSODataBySoID = async (req, res, next) => {
+    const so_id = req.params.id; // Assuming you have a route parameter for po_id
+    console.log(so_id, 'SO_ID');
+
+    try {
+        // Fetch the specific purchase order based on id and include vendor and warehouse details
+        const salesOrder = await models.sales_orders.findOne({
+            where: {
+                id: so_id,
+            },
+            include: [
+                {
+                    model: models.customers,
+                    // as: 'vendors', // Alias for the included vendor details
+                },
+                {
+                    model: models.tenants,
+                    // as: 'vendors', // Alias for the included vendor details
+                },
+                {
+                    model: models.users,
+                    // as: 'users', // Alias for the included user details
+                },
+                {
+                    model: models.sales_order_items,
+                    include: [
+                        {
+                            model: models.inventory_items,
+                            // as: 'inventories', // Alias for the included inventory item details
+                        },
+                    ],
+                },
+            ],
+        });
+
+        if (!salesOrder) {
+            return res.status(404).json({ message: 'Sales Quotation not found' });
+        }
+
+        res.status(200).send({
+            message: 'Sales Order, Items, and Details have been fetched successfully',
+            salesOrder,
         });
         console.log('Data pushed to front');
     } catch (error) {
@@ -315,7 +383,9 @@ const deleteSQItemAndUpdate = async (req, res) => {
 module.exports = {
     createSalesQuotation,
     getSQDataBySqID,
+    getSODataBySoID,
     addItemToSQ,
     updateSQItem,
-    deleteSQItemAndUpdate
+    deleteSQItemAndUpdate,
+    createSalesOrder
 }

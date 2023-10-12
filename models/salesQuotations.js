@@ -46,11 +46,11 @@ module.exports = (sequelize, DataTypes) => {
             },
             due_date: {
                 type: DataTypes.DATE,
-                allowNull: false,
+                allowNull: true,
             },
             posting_date: {
                 type: DataTypes.DATE,
-                allowNull: false,
+                allowNull: true,
             },
             status: {
                 type: DataTypes.ENUM('open', 'closed', 'void'),
