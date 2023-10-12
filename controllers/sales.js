@@ -207,7 +207,7 @@ const addItemToSalesOrder = async (req, res) => {
         console.log(req.body, 'Req Body');
 
         // Calculate the total_price for the new item and round to 2 decimal places
-        const newItemTotalPrice = (newItemData.unit_price * newItemData.quantity);
+        const newItemTotalPrice = newItemData.unit_price * newItemData.quantity;
 
         // Format the total price with two decimal places
         const formattedTotalPrice = newItemTotalPrice.toFixed(2);
@@ -255,11 +255,12 @@ const addItemToSalesOrder = async (req, res) => {
         });
         console.log('updated subtotal');
 
-        // Handle inventory updates
+        // Handle inventory updates if it's an inventory item
         const inventoryItem = await models.inventory_items.findOne({
             where: {
                 tenant_id: newItemData.tenant_id,
                 id: newItemData.inv_item_id,
+                inventory_item: true, // Check if it's an inventory item
             },
         });
 
@@ -306,6 +307,7 @@ const addItemToSalesOrder = async (req, res) => {
         res.status(500).json({ error: 'Failed to add item to sales order' });
     }
 };
+
 
 // const addItemToSQ = async (req, res) => {
 //     try {
@@ -544,8 +546,9 @@ const deleteSQItemAndUpdate = async (req, res) => {
 
 const convertSQToSO = async (req, res) => {
     try {
-        const salesQuotationId = req.body.sq_id
-        const tenant_id = req.body.tenant_id
+        const salesQuotationId = req.body.sq_id;
+        const tenant_id = req.body.tenant_id;
+
         // Retrieve sales quotation data
         const salesQuotation = await models.sales_quotations.findByPk(salesQuotationId, {
             include: [{ model: models.sales_quotation_items }],
@@ -575,19 +578,14 @@ const convertSQToSO = async (req, res) => {
         for (const item of salesQuotation.sales_quotation_items) {
             const { inv_item_id, quantity, unit_price, total_price } = item;
 
-            // Find the inventory item to get the warehouse_id
+            // Check if it's an inventory item
             const inventoryItem = await models.inventory_items.findOne({
                 where: {
                     tenant_id,
                     id: inv_item_id,
+                    inventory_item: true, // Check the inventory_item column
                 },
             });
-
-            if (!inventoryItem) {
-                return { success: false, message: 'Inventory item not found' };
-            }
-
-            const warehouseId = inventoryItem.default_wh;
 
             // Create a new item in the sales_order_items table
             await models.sales_order_items.create({
@@ -600,51 +598,60 @@ const convertSQToSO = async (req, res) => {
                 // Include other relevant fields from the sales quotation item
             });
 
-            // Update inventories for each item within the specified warehouse
-            const inventoryData = await models.inventories.findOne({
-                where: {
-                    tenant_id,
-                    item_id: inv_item_id,
-                    warehouse_id: warehouseId, // Include the warehouse_id in the query
-                },
-            });
+            // Update the inventories table for inventory items
+            if (inventoryItem) {
+                // Find the inventory item to get the warehouse_id
+                const warehouseId = inventoryItem.default_wh;
 
-            if (inventoryData) {
-                // Update available and committed quantities
-                const currentAvailableQuantity = inventoryData.available || 0;
-                const currentCommittedQuantity = inventoryData.committed || 0;
-
-                // Calculate the updated available and committed quantities
-                const updatedAvailableQuantity = (currentAvailableQuantity - quantity) || -quantity;
-                const updatedCommittedQuantity = currentCommittedQuantity + quantity;
-
-                await inventoryData.update({
-                    available: updatedAvailableQuantity,
-                    committed: updatedCommittedQuantity,
+                // Update inventories for each item within the specified warehouse
+                let inventoryData = await models.inventories.findOne({
+                    where: {
+                        tenant_id,
+                        item_id: inv_item_id,
+                        warehouse_id: warehouseId,
+                    },
                 });
-            } else {
-                // If no inventory data exists, create a new entry
-                await models.inventories.create({
-                    tenant_id,
-                    item_id: inv_item_id,
-                    warehouse_id: warehouseId,
-                    available: -quantity, // Set as the negative quantity
-                    committed: quantity, // Set as the newly added quantity
-                    // Other columns as needed
-                });
+
+                if (inventoryData) {
+                    // Update available and committed quantities
+                    const currentAvailableQuantity = inventoryData.available || 0;
+                    const currentCommittedQuantity = inventoryData.committed || 0;
+
+                    // Calculate the updated available and committed quantities
+                    const updatedAvailableQuantity = currentAvailableQuantity - quantity;
+                    const updatedCommittedQuantity = currentCommittedQuantity + quantity;
+
+                    await inventoryData.update({
+                        available: updatedAvailableQuantity,
+                        committed: updatedCommittedQuantity,
+                    });
+                } else {
+                    // If no inventory data exists, create a new entry
+                    await models.inventories.create({
+                        tenant_id,
+                        item_id: inv_item_id,
+                        warehouse_id: warehouseId,
+                        available: -quantity,
+                        committed: quantity,
+                        // Other columns as needed
+                    });
+                }
             }
-
-            await salesQuotation.update({
-                status: 'closed', // Assuming "closed" is one of the enum values
-            });
         }
 
-        res.status(200).json({ message: 'Sales Quotation Converted Successfully', salesOrderId: salesOrder.id })
+        await salesQuotation.update({
+            status: 'closed', // Assuming "closed" is one of the enum values
+        });
+
+        res.status(200).json({ message: 'Sales Quotation Converted Successfully', salesOrderId: salesOrder.id });
     } catch (error) {
         console.error('Error converting sales quotation to sales order:', error);
         return { success: false, message: 'Failed to convert sales quotation to sales order' };
     }
 };
+
+
+
 
 
 
