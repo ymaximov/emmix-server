@@ -147,7 +147,7 @@ const addItemToSQ = async (req, res) => {
         console.log(req.body, 'req body!!');
 
         // Calculate the total_price
-        const total_price = quantity * unit_price;
+        const total_price = (quantity * unit_price).toFixed(2);
 
         // Insert the new item into the sales_quotation_items table
         const createdItem = await models.sales_quotation_items.create({
@@ -166,7 +166,7 @@ const addItemToSQ = async (req, res) => {
         });
 
         // Calculate the new subtotal for the sales quotation
-        const newSubtotal = items.reduce((subtotal, item) => subtotal + item.total_price, 0);
+        const newSubtotal = items.reduce((subtotal, item) => subtotal + parseFloat(item.total_price), 0).toFixed(2);
 
         // Fetch the sales_quotations record
         const salesQuotation = await models.sales_quotations.findByPk(sq_id);
@@ -181,11 +181,11 @@ const addItemToSQ = async (req, res) => {
         // Calculate the new sales_tax based on tax_rate and newSubtotal
         let salesTax = 0;
         if (taxRate !== null && taxRate !== 0) {
-            salesTax = (taxRate / 100) * newSubtotal; // Divide by 100 to convert percentage to decimal
+            salesTax = ((taxRate / 100) * newSubtotal).toFixed(2); // Divide by 100 to convert percentage to decimal
         }
 
         // Calculate the new total_amount
-        const totalAmount = newSubtotal + salesTax;
+        const totalAmount = (parseFloat(newSubtotal) + parseFloat(salesTax)).toFixed(2);
 
         // Update the sales_quotations record with the new subtotal, calculated sales_tax, and total_amount
         await salesQuotation.update({
@@ -200,6 +200,66 @@ const addItemToSQ = async (req, res) => {
         res.status(500).json({ error: 'Failed to add item to sales quotation' });
     }
 };
+
+// const addItemToSQ = async (req, res) => {
+//     try {
+//         const { tenant_id, user_id, inv_item_id, quantity, unit_price, sq_id } = req.body;
+//         console.log(req.body, 'req body!!');
+//
+//         // Calculate the total_price
+//         const total_price = quantity * unit_price;
+//
+//         // Insert the new item into the sales_quotation_items table
+//         const createdItem = await models.sales_quotation_items.create({
+//             tenant_id,
+//             user_id,
+//             inv_item_id,
+//             quantity,
+//             unit_price,
+//             total_price,
+//             sq_id,
+//         });
+//
+//         // Fetch all items for the corresponding sales quotation (sq_id)
+//         const items = await models.sales_quotation_items.findAll({
+//             where: { sq_id },
+//         });
+//
+//         // Calculate the new subtotal for the sales quotation
+//         // const newSubtotal = items.reduce((subtotal, item) => subtotal + item.total_price, 0);
+//         const newSubtotal = items.reduce((subtotal, item) => subtotal + parseFloat(item.total_price), 0).toFixed(2);
+//         // Fetch the sales_quotations record
+//         const salesQuotation = await models.sales_quotations.findByPk(sq_id);
+//
+//         if (!salesQuotation) {
+//             return res.status(404).json({ error: 'Sales quotation not found' });
+//         }
+//
+//         // Use the existing tax_rate from the sales_quotations table
+//         const taxRate = salesQuotation.tax_rate;
+//
+//         // Calculate the new sales_tax based on tax_rate and newSubtotal
+//         let salesTax = 0;
+//         if (taxRate !== null && taxRate !== 0) {
+//             salesTax = (taxRate / 100) * newSubtotal; // Divide by 100 to convert percentage to decimal
+//         }
+//
+//         // Calculate the new total_amount
+//         const totalAmount = newSubtotal + salesTax;
+//
+//         // Update the sales_quotations record with the new subtotal, calculated sales_tax, and total_amount
+//         await salesQuotation.update({
+//             subtotal: newSubtotal,
+//             sales_tax: salesTax,
+//             total_amount: totalAmount,
+//         });
+//
+//         return res.status(200).json({ message: 'Item added to sales quotation successfully', data: createdItem });
+//     } catch (error) {
+//         console.error('Error adding item to sales quotation:', error);
+//         res.status(500).json({ error: 'Failed to add item to sales quotation' });
+//     }
+// };
 
 
 

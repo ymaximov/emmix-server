@@ -57,15 +57,15 @@ module.exports = (sequelize, DataTypes) => {
                 defaultValue: 'open',
             },
             sales_tax: {
-                type: DataTypes.FLOAT,
+                type: DataTypes.DECIMAL(10, 2),
                 allowNull: true,
             },
             subtotal: {
-                type: DataTypes.FLOAT,
+                type: DataTypes.DECIMAL(10, 2),
                 allowNull: true,
             },
             total_amount: {
-                type: DataTypes.FLOAT,
+                type: DataTypes.DECIMAL(10, 2),
                 allowNull: true,
             },
             invoiced: {
