@@ -11,6 +11,7 @@ router.get('/get-so-by-id/:id', auth, salesController.getSODataBySoID)
 router.post('/add-item-to-sq', auth, salesController.addItemToSQ)
 router.post('/add-item-to-so', auth, salesController.addItemToSalesOrder)
 router.put('/update-item-sq', auth, salesController.updateSQItem)
+router.put('/update-item-so', auth, salesController.updateSOItem)
 router.delete('/delete-item-sq', auth, salesController.deleteSQItemAndUpdate)
 
 module.exports = router

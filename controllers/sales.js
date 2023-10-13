@@ -460,7 +460,7 @@ const updateSQItem = async (req, res) => {
         }
 
         // Update the sales quotation item with the new quantity and unit_price
-        await salesQuotationItem.update({ quantity: newQuantity, unit_price: newUnitPrice });
+        await salesQuotationItem.update({ quantity: newQuantity, unit_price: newUnitPrice, wh_id: req.body.wh_id });
 
         // Calculate the new total_price based on the updated quantity and unit_price
         const newTotalPrice = (newQuantity * newUnitPrice).toFixed(2); // Ensure two decimal places
@@ -499,6 +499,132 @@ const updateSQItem = async (req, res) => {
         return res.status(500).json({ error: 'Internal Server Error' });
     }
 };
+
+const updateSOItem = async (req, res) => {
+    try {
+        const tenant_id = req.body.tenant_id;
+        const item_id = req.body.item_id;
+        const newQuantity = req.body.quantity;
+        const newUnitPrice = req.body.unit_price;
+        const wh_id = req.body.wh_id; // Warehouse ID from the front end
+
+        const salesOrderItem = await models.sales_order_items.findOne({
+            where: { tenant_id, id: item_id },
+        });
+
+        if (!salesOrderItem) {
+            console.error('Sales order item not found for the provided tenant_id and item_id.');
+            return res.status(404).json({ error: 'Item not found in the sales order' });
+        }
+
+        // Find the associated inventory item to update inventories
+        const inventoryItem = await models.inventory_items.findOne({
+            where: {
+                tenant_id,
+                id: salesOrderItem.inv_item_id,
+            },
+        });
+
+        if (inventoryItem) {
+            // Get the warehouse ID associated with the sales_order_item
+            const currentWarehouseId = salesOrderItem.wh_id;
+
+            // Find the inventory data for the specified warehouse associated with the current sales_order_item
+            const currentInventoryData = await models.inventories.findOne({
+                where: {
+                    tenant_id,
+                    item_id: salesOrderItem.inv_item_id,
+                    warehouse_id: currentWarehouseId,
+                },
+            });
+
+            if (currentInventoryData) {
+                // Calculate the current quantities in inventory
+                const currentAvailableQuantity = currentInventoryData.available || 0;
+                const currentCommittedQuantity = currentInventoryData.committed || 0;
+
+                // Subtract the current quantity from the committed and add it to available
+                const updatedAvailableQuantity = currentAvailableQuantity + salesOrderItem.quantity;
+                const updatedCommittedQuantity = currentCommittedQuantity - salesOrderItem.quantity;
+
+                // Update the inventory data for the current item in the specified warehouse
+                await currentInventoryData.update({
+                    available: updatedAvailableQuantity,
+                    committed: updatedCommittedQuantity,
+                });
+            }
+        }
+
+        // Find or create the inventory data for the specified warehouse from the front end (wh_id)
+        let newInventoryData = await models.inventories.findOne({
+            where: {
+                tenant_id,
+                item_id: salesOrderItem.inv_item_id,
+                warehouse_id: wh_id, // Warehouse ID from the front end
+            },
+        });
+
+        if (!newInventoryData) {
+            // Create a new entry in inventories if it doesn't exist
+            newInventoryData = await models.inventories.create({
+                tenant_id,
+                item_id: salesOrderItem.inv_item_id,
+                warehouse_id: wh_id,
+                available: 0,
+                committed: 0,
+            });
+        }
+
+        // Calculate the new quantities in inventory based on the new quantity from the req body
+        const newAvailableQuantity = newInventoryData.available || 0;
+        const newCommittedQuantity = newInventoryData.committed || 0;
+
+        // Update the inventory data for the new quantity in the specified warehouse from the front end
+        await newInventoryData.update({
+            available: newAvailableQuantity - newQuantity,
+            committed: newCommittedQuantity + newQuantity,
+        });
+
+        // Calculate the new total_price based on the updated quantity and unit_price
+        const newTotalPrice = (newQuantity * newUnitPrice).toFixed(2);
+
+        // Update the sales order item with the new quantity, unit_price, total_price, and wh_id
+        await salesOrderItem.update({
+            quantity: newQuantity,
+            unit_price: newUnitPrice,
+            total_price: newTotalPrice,
+            wh_id: wh_id,
+        });
+
+        // Update the sales_orders table with the new subtotal, sales_tax, and total_amount
+        const relatedItems = await models.sales_order_items.findAll({
+            where: { so_id: salesOrderItem.so_id },
+        });
+
+        const newSubtotal = relatedItems.reduce((sum, item) => sum + parseFloat(item.total_price), 0).toFixed(2);
+
+        const salesOrder = await models.sales_orders.findByPk(salesOrderItem.so_id);
+
+        const taxRatePercentage = salesOrder.tax_rate;
+        const taxRateDecimal = taxRatePercentage / 100;
+        const newSalesTax = (newSubtotal * taxRateDecimal).toFixed(2);
+
+        const newTotalAmount = (parseFloat(newSalesTax) + parseFloat(newSubtotal)).toFixed(2);
+
+        await salesOrder.update({
+            subtotal: newSubtotal,
+            sales_tax: newSalesTax,
+            total_amount: newTotalAmount,
+        });
+
+        console.log('Updated sales_order_items, inventories, and sales_orders successfully.');
+        return res.status(200).json({ message: 'Item updated successfully' });
+    } catch (error) {
+        console.error('Error updating tables:', error);
+        return res.status(500).json({ error: 'Internal Server Error' });
+    }
+};
+
 
 
 
@@ -674,6 +800,7 @@ module.exports = {
     getSODataBySoID,
     addItemToSQ,
     updateSQItem,
+    updateSOItem,
     deleteSQItemAndUpdate,
     createSalesOrder,
     addItemToSalesOrder,
