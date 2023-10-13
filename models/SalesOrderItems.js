@@ -48,9 +48,17 @@ module.exports = (sequelize, DataTypes) => {
                     key: 'id',
                 },
             },
+            status: {
+                type: DataTypes.ENUM('open', 'closed', 'void'),
+                defaultValue: 'open',
+            },
             quantity: {
                 type: DataTypes.INTEGER,
                 allowNull: false,
+            },
+            delivered_qty: {
+                type: DataTypes.INTEGER,
+                allowNull: true,
             },
             unit_price: {
                 type: DataTypes.DECIMAL(10, 2),
