@@ -267,13 +267,13 @@ const addItemToSalesOrder = async (req, res) => {
         });
 
         if (inventoryItem) {
-            const warehouseId = inventoryItem.default_wh;
+            // const warehouseId = inventoryItem.default_wh;
 
             const inventoryData = await models.inventories.findOne({
                 where: {
                     tenant_id: newItemData.tenant_id,
                     item_id: newItemData.inv_item_id,
-                    warehouse_id: warehouseId,
+                    warehouse_id: newItemData.wh_id,
                 },
             });
 
@@ -295,7 +295,7 @@ const addItemToSalesOrder = async (req, res) => {
                 await models.inventories.create({
                     tenant_id: newItemData.tenant_id,
                     item_id: newItemData.inv_item_id,
-                    warehouse_id: warehouseId,
+                    warehouse_id: newItemData.wh_id,
                     available: -newItemData.quantity,
                     committed: newItemData.quantity,
                     // Other columns as needed
@@ -605,14 +605,14 @@ const convertSQToSO = async (req, res) => {
             // Update the inventories table for inventory items
             if (inventoryItem) {
                 // Find the inventory item to get the warehouse_id
-                const warehouseId = inventoryItem.default_wh;
+                // const warehouseId = inventoryItem.default_wh;
 
                 // Update inventories for each item within the specified warehouse
                 let inventoryData = await models.inventories.findOne({
                     where: {
                         tenant_id,
                         item_id: inv_item_id,
-                        warehouse_id: warehouseId,
+                        warehouse_id: wh_id,
                     },
                 });
 
@@ -634,7 +634,7 @@ const convertSQToSO = async (req, res) => {
                     await models.inventories.create({
                         tenant_id,
                         item_id: inv_item_id,
-                        warehouse_id: warehouseId,
+                        warehouse_id: wh_id,
                         available: -quantity,
                         committed: quantity,
                         // Other columns as needed
