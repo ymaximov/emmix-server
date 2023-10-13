@@ -71,6 +71,10 @@ const getSQDataBySqID = async (req, res, next) => {
                             model: models.inventory_items,
                             // as: 'inventories', // Alias for the included inventory item details
                         },
+                        {
+                            model: models.warehouses,
+                            // as: 'inventories', // Alias for the included inventory item details
+                        },
                     ],
                 },
             ],
@@ -119,6 +123,10 @@ const getSODataBySoID = async (req, res, next) => {
                     include: [
                         {
                             model: models.inventory_items,
+                            // as: 'inventories', // Alias for the included inventory item details
+                        },
+                        {
+                            model: models.warehouses,
                             // as: 'inventories', // Alias for the included inventory item details
                         },
                     ],
