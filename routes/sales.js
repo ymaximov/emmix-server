@@ -13,5 +13,6 @@ router.post('/add-item-to-so', auth, salesController.addItemToSalesOrder)
 router.put('/update-item-sq', auth, salesController.updateSQItem)
 router.put('/update-item-so', auth, salesController.updateSOItem)
 router.delete('/delete-item-sq', auth, salesController.deleteSQItemAndUpdate)
+router.delete('/delete-item-so', auth, salesController.deleteSOItemAndUpdate)
 
 module.exports = router

@@ -680,6 +680,94 @@ const deleteSQItemAndUpdate = async (req, res) => {
     }
 };
 
+const deleteSOItemAndUpdate = async (req, res) => {
+    try {
+        const tenant_id = req.query.tenant_id;
+        const item_id = req.query.item_id;
+
+        // Find the sales order item by tenant_id and ID
+        const salesOrderItem = await models.sales_order_items.findOne({
+            where: { tenant_id, id: item_id },
+        });
+
+        if (!salesOrderItem) {
+            console.error('Sales order item not found for the provided tenant_id and ID.');
+            return res.status(404).json({ error: 'Item not found' });
+        }
+
+        // Find the associated inventory item
+        const inventoryItem = await models.inventory_items.findOne({
+            where: {
+                tenant_id,
+                id: salesOrderItem.inv_item_id,
+            },
+        });
+
+        if (inventoryItem) {
+            // Find the inventory data for the specified warehouse (wh_id from salesOrderItem)
+            const inventoryData = await models.inventories.findOne({
+                where: {
+                    tenant_id,
+                    item_id: salesOrderItem.inv_item_id,
+                    warehouse_id: salesOrderItem.wh_id, // Use wh_id from the sales order item
+                },
+            });
+
+            if (inventoryData) {
+                // Update available and committed quantities
+                const currentAvailableQuantity = inventoryData.available || 0;
+                const currentCommittedQuantity = inventoryData.committed || 0;
+
+                // Subtract the item quantity from "committed" and add it to "available"
+                const updatedAvailableQuantity = currentAvailableQuantity + salesOrderItem.quantity;
+                const updatedCommittedQuantity = currentCommittedQuantity - salesOrderItem.quantity;
+
+                // Update the inventory data
+                await inventoryData.update({
+                    available: updatedAvailableQuantity,
+                    committed: updatedCommittedQuantity,
+                });
+            }
+        }
+
+        // Delete the sales order item from the database
+        await salesOrderItem.destroy();
+
+        // Find all sales order items associated with the same so_id (sales order)
+        const relatedItems = await models.sales_order_items.findAll({
+            where: { so_id: salesOrderItem.so_id },
+        });
+
+        // Calculate the new subtotal based on the related items
+        const newSubtotal = relatedItems.reduce((sum, item) => sum + parseFloat(item.total_price), 0).toFixed(2);
+
+        // Find the sales order associated with this so_id
+        const salesOrder = await models.sales_orders.findByPk(salesOrderItem.so_id);
+
+        // Calculate the new sales_tax based on the new subtotal and tax_rate (considered as a percentage)
+        const taxRatePercentage = salesOrder.tax_rate; // Example: 10% tax_rate
+        const taxRateDecimal = taxRatePercentage / 100; // Convert percentage to decimal (0.10)
+        const newSalesTax = (newSubtotal * taxRateDecimal).toFixed(2);
+
+        // Calculate the new total_amount as the sum of newSubtotal and newSalesTax
+        const newTotalAmount = (parseFloat(newSalesTax) + parseFloat(newSubtotal)).toFixed(2);
+
+        // Update the sales_orders table with the new values
+        await salesOrder.update({
+            subtotal: newSubtotal,
+            sales_tax: newSalesTax,
+            total_amount: newTotalAmount,
+        });
+
+        console.log('Deleted sales_order_item, updated inventory, and sales_orders successfully.');
+        return res.status(200).json({ message: 'Item deleted and sales_orders updated successfully' });
+    } catch (error) {
+        console.error('Error deleting item and updating tables:', error);
+        return res.status(500).json({ error: 'Internal Server Error' });
+    }
+};
+
+
 
 const convertSQToSO = async (req, res) => {
     try {
@@ -804,5 +892,6 @@ module.exports = {
     deleteSQItemAndUpdate,
     createSalesOrder,
     addItemToSalesOrder,
-    convertSQToSO
+    convertSQToSO,
+    deleteSOItemAndUpdate
 }
