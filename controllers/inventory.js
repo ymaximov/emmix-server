@@ -289,174 +289,12 @@ const updateInventoryForGoodsReceipt = async (req, res) => {
         return res.status(500).json({ message: 'Error updating inventory and purchase order' });
     }
 };
-
-
-// const updateInventoryForGoodsReceipt = async (req, res) => {
-//     try {
-//         const { goodsReceiptId, warehouseId } = req.body;
-//
-//         // Find all items related to the goodsReceiptId in goods_receipt_items
-//         const goodsReceiptItems = await models.goods_receipt_items.findAll({
-//             where: {
-//                 goods_receipt_id: goodsReceiptId,
-//             },
-//         });
-//
-//         if (!goodsReceiptItems || goodsReceiptItems.length === 0) {
-//             throw new Error(`No goods receipt items found for Goods Receipt ID ${goodsReceiptId}.`);
-//         }
-//
-//         // Iterate through the items and update inventory for each one
-//         for (const goodsReceiptItem of goodsReceiptItems) {
-//             const { inv_item_id, quantity, received_quantity } = goodsReceiptItem;
-//
-//             // Find the corresponding item in the inventories table
-//             const inventoryItem = await models.inventories.findOne({
-//                 where: {
-//                     item_id: inv_item_id,
-//                     warehouse_id: warehouseId,
-//                 },
-//             });
-//
-//             if (!inventoryItem) {
-//                 throw new Error(`Inventory item with Item ID ${inv_item_id} and Warehouse ID ${warehouseId} not found.`);
-//             }
-//
-//             // Update the ordered, in_stock, and available columns
-//             inventoryItem.ordered -= quantity;
-//             inventoryItem.in_stock += received_quantity;
-//             inventoryItem.available += received_quantity;
-//
-//             // Save the updated inventory item
-//             await inventoryItem.save();
-//         }
-//
-//         // Update the goods receipt status to "closed" in the goods_receipts table
-//         const goodsReceiptToUpdate = await models.goods_receipts.findOne({
-//             where: {
-//                 id: goodsReceiptId,
-//             },
-//         });
-//
-//         if (!goodsReceiptToUpdate) {
-//             throw new Error(`Goods receipt with ID ${goodsReceiptId} not found.`);
-//         }
-//
-//         // Update the status to "closed" (assuming "closed" is an enum value)
-//         goodsReceiptToUpdate.status = 'closed';
-//
-//         // Save the updated goods receipt item
-//         await goodsReceiptToUpdate.save();
-//
-//         // Find the corresponding purchase order based on po_id
-//         const purchaseOrder = await models.purchase_orders.findOne({
-//             where: {
-//                 id: goodsReceiptToUpdate.po_id,
-//             },
-//         });
-//
-//         if (!purchaseOrder) {
-//             throw new Error(`Purchase order with ID ${goodsReceiptToUpdate.po_id} not found.`);
-//         }
-//
-//         // Update the status of the purchase order to "closed" (assuming "closed" is an enum value)
-//         purchaseOrder.status = 'closed';
-//
-//         // Save the updated purchase order
-//         await purchaseOrder.save();
-//
-//         // Return a success message or result if needed
-//         return res.status(200).json({ message: 'Inventory and purchase order updated successfully' });
-//     } catch (error) {
-//         console.error('Error updating inventory and purchase order:', error);
-//         return res.status(500).json({ message: 'Error updating inventory and purchase order' });
-//     }
-// };
-
-// const updateInventoryForGoodsReceipt = async (req, res) => {
-//     try {
-//         const { goodsReceiptId, warehouseId } = req.body;
-//
-//         // Find all items related to the goodsReceiptId in goods_receipt_items
-//         const goodsReceiptItems = await models.goods_receipt_items.findAll({
-//             where: {
-//                 goods_receipt_id: goodsReceiptId,
-//             },
-//         });
-//
-//         if (!goodsReceiptItems || goodsReceiptItems.length === 0) {
-//             throw new Error(`No goods receipt items found for Goods Receipt ID ${goodsReceiptId}.`);
-//         }
-//
-//         // Iterate through the items and update inventory for each one
-//         for (const goodsReceiptItem of goodsReceiptItems) {
-//             const { inv_item_id, quantity, received_quantity } = goodsReceiptItem;
-//
-//             // Find the corresponding item in the inventories table
-//             const inventoryItem = await models.inventories.findOne({
-//                 where: {
-//                     item_id: inv_item_id,
-//                     warehouse_id: warehouseId,
-//                 },
-//             });
-//
-//             if (!inventoryItem) {
-//                 throw new Error(`Inventory item with Item ID ${inv_item_id} and Warehouse ID ${warehouseId} not found.`);
-//             }
-//
-//             // Update the ordered, in_stock, and available columns
-//             inventoryItem.ordered -= quantity;
-//             inventoryItem.in_stock += received_quantity;
-//             inventoryItem.available += received_quantity;
-//
-//             // Save the updated inventory item
-//             await inventoryItem.save();
-//         }
-//
-//         // Update the goods receipt status to "closed" in the goods_receipts table
-//         const goodsReceiptToUpdate = await models.goods_receipts.findOne({
-//             where: {
-//                 id: goodsReceiptId,
-//             },
-//         });
-//
-//         if (!goodsReceiptToUpdate) {
-//             throw new Error(`Goods receipt with ID ${goodsReceiptId} not found.`);
-//         }
-//
-//         // Update the status to "closed" (assuming "closed" is an enum value)
-//         goodsReceiptToUpdate.status = 'closed';
-//
-//         // Save the updated goods receipt item
-//         await goodsReceiptToUpdate.save();
-//
-//         // Return a success message or result if needed
-//         return res.status(200).json({ message: 'Inventory updated successfully' });
-//     } catch (error) {
-//         console.error('Error updating inventory:', error);
-//         return res.status(500).json({ message: 'Error updating inventory' });
-//     }
-// };
 const createDelivery = async (req, res) => {
     try {
         const { tenant_id, so_id, wh_id, picker_id } = req.body;
 
         if (!tenant_id || !so_id || !wh_id) {
             return res.status(400).json({ message: 'Invalid or empty request body' });
-        }
-
-        // Check if there are sales order items for the specified sales order and warehouse
-        const salesOrderItems = await models.sales_order_items.findAll({
-            where: {
-                so_id,
-                wh_id,
-                status: 'open', // Ensure status is 'open' for sales order items
-            },
-        });
-
-        if (salesOrderItems.length === 0) {
-            // No matching items found, return an error
-            return res.status(404).json({ message: 'No matching items found in the sales order for the specified warehouse.' });
         }
 
         // Check if there is an open delivery for the given sales order and warehouse
@@ -471,19 +309,27 @@ const createDelivery = async (req, res) => {
         if (existingOpenDelivery) {
             // If an open delivery exists, return its data
 
-            // ... (existing delivery code remains the same)
+            const existingDeliveryItems = await models.delivery_items.findAll({
+                where: { delivery_id: existingOpenDelivery.id },
+            });
 
+            // Fetch customer details based on customer_id
+            const customerDetails = await models.customers.findByPk(existingOpenDelivery.customer_id);
+
+            const deliveryItemDetailsPromises = existingDeliveryItems.map(async (item) => {
+                const inventoryItem = await models.inventory_items.findByPk(item.inv_item_id);
+                return { ...item.dataValues, inventoryItem };
+            });
+
+            const deliveryItemDetails = await Promise.all(deliveryItemDetailsPromises);
+
+            // Send the data to the front end with a status of 200
             return res.status(200).json({
                 delivery: {
                     ...existingOpenDelivery.dataValues,
                     customerDetails,
                 },
-                deliveryItems: existingDeliveryItems.map((item, index) => {
-                    return {
-                        ...item.dataValues,
-                        inventoryItemDetails: inventoryItemDetails[index],
-                    };
-                }),
+                deliveryItems: deliveryItemDetails,
             });
         }
 
@@ -515,6 +361,14 @@ const createDelivery = async (req, res) => {
 
         const newDeliveryItems = [];
 
+        const salesOrderItems = await models.sales_order_items.findAll({
+            where: {
+                so_id,
+                wh_id,
+                status: 'open', // Ensure status is 'open' for sales order items
+            },
+        });
+
         for (const salesOrderItem of salesOrderItems) {
             const { inv_item_id, quantity } = salesOrderItem;
             const remainingQuantity = quantity;
@@ -537,18 +391,10 @@ const createDelivery = async (req, res) => {
 
             const createdDeliveryItem = await models.delivery_items.create(newDeliveryItem);
 
-            newDeliveryItems.push({
-                ...createdDeliveryItem.dataValues,
-                inventoryItemDetails,
-            });
+            const inventoryItem = await models.inventory_items.findByPk(createdDeliveryItem.inv_item_id);
+
+            newDeliveryItems.push({ ...createdDeliveryItem.dataValues, inventoryItem });
         }
-
-        // Fetch inventory item details for each new delivery item
-        const newItemDetailsPromises = newDeliveryItems.map((item) => {
-            return models.inventory_items.findByPk(item.inv_item_id);
-        });
-
-        const newItemInventoryItemDetails = await Promise.all(newItemDetailsPromises);
 
         // Send the data to the front end with a status of 200
         return res.status(200).json({
@@ -556,19 +402,13 @@ const createDelivery = async (req, res) => {
                 ...newDelivery.dataValues,
                 customerDetails,
             },
-            deliveryItems: newDeliveryItems.map((item, index) => {
-                return {
-                    ...item,
-                    inventoryItemDetails: newItemInventoryItemDetails[index],
-                };
-            }),
+            deliveryItems: newDeliveryItems,
         });
     } catch (error) {
-        console.error('Error creating delivery and delivery items:', error);
-        return res.status(500).json({ message: 'Error creating delivery and delivery items' });
+        console.error('Error creating or retrieving delivery and delivery items:', error);
+        return res.status(500).json({ message: 'Error creating or retrieving delivery and delivery items' });
     }
 };
-
 
 
 
