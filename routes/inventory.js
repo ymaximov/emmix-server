@@ -15,5 +15,6 @@ router.get('/get-inventory-by-tenant-id/:id', auth,  inventoryController.getInve
 router.put('/update-inventory-item',  auth, inventoryController.updateInventoryItem)
 router.get('/get-stock-data-by-item-id', auth, inventoryController.getStockData)
 router.put('/update-inventory-gr', auth, inventoryController.updateInventoryForGoodsReceipt)
+router.post('/create-delivery', auth, inventoryController.createDelivery)
 
 module.exports = router

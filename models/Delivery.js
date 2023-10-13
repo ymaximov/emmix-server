@@ -8,6 +8,7 @@ module.exports = (sequelize, DataTypes) => {
             Delivery.belongsTo(models.tenants, { foreignKey: 'tenant_id' });
             Delivery.belongsTo(models.customers, { foreignKey: 'customer_id' });
             Delivery.belongsTo(models.users, { foreignKey: 'picker_id' });
+            Delivery.belongsTo(models.warehouses, { foreignKey: 'wh_id' });
             Delivery.belongsTo(models.sales_orders, { foreignKey: 'so_id' });
             Delivery.hasMany(models.delivery_items, { foreignKey: 'delivery_id' });
         }
@@ -34,6 +35,14 @@ module.exports = (sequelize, DataTypes) => {
                 allowNull: false,
                 references: {
                     model: 'sales_orders', // Replace with the actual table name if different
+                    key: 'id',
+                },
+            },
+            wh_id: {
+                type: DataTypes.INTEGER,
+                allowNull: false,
+                references: {
+                    model: 'warehouses', // Replace with the actual table name if different
                     key: 'id',
                 },
             },
