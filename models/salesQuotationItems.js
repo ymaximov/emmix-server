@@ -8,6 +8,7 @@ module.exports = (sequelize, DataTypes) => {
             SalesQuotationItem.belongsTo(models.sales_quotations, { foreignKey: 'sq_id' });
             SalesQuotationItem.belongsTo(models.inventory_items, { foreignKey: 'inv_item_id' });
             SalesQuotationItem.belongsTo(models.tenants, { foreignKey: 'tenant_id' });
+            SalesQuotationItem.belongsTo(models.warehouses, { foreignKey: 'wh_id' });
             SalesQuotationItem.belongsTo(models.inventory_items, { foreignKey: 'inv_item_id'});
         }
     }
@@ -28,6 +29,14 @@ module.exports = (sequelize, DataTypes) => {
                 allowNull: false,
                 references: {
                     model: 'sales_quotations',
+                    key: 'id',
+                },
+            },
+            wh_id: {
+                type: DataTypes.INTEGER,
+                allowNull: true,
+                references: {
+                    model: 'warehouses',
                     key: 'id',
                 },
             },

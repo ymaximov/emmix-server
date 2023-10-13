@@ -143,7 +143,7 @@ const getSODataBySoID = async (req, res, next) => {
 
 const addItemToSQ = async (req, res) => {
     try {
-        const { tenant_id, user_id, inv_item_id, quantity, unit_price, sq_id } = req.body;
+        const { tenant_id, user_id, inv_item_id, quantity, unit_price, sq_id, wh_id } = req.body;
         console.log(req.body, 'req body!!');
 
         // Calculate the total_price
@@ -158,6 +158,7 @@ const addItemToSQ = async (req, res) => {
             unit_price,
             total_price,
             sq_id,
+            wh_id
         });
 
         // Fetch all items for the corresponding sales quotation (sq_id)
@@ -216,6 +217,7 @@ const addItemToSalesOrder = async (req, res) => {
         const createdItem = await models.sales_order_items.create({
             tenant_id: newItemData.tenant_id,
             so_id: salesOrderId,
+            wh_id: newItemData.wh_id,
             inv_item_id: newItemData.inv_item_id,
             quantity: newItemData.quantity,
             unit_price: newItemData.unit_price,
@@ -577,7 +579,7 @@ const convertSQToSO = async (req, res) => {
 
         // Loop through sales quotation items and create corresponding sales order items
         for (const item of salesQuotation.sales_quotation_items) {
-            const { inv_item_id, quantity, unit_price, total_price } = item;
+            const { inv_item_id, quantity, unit_price, total_price, wh_id } = item;
 
             // Check if it's an inventory item
             const inventoryItem = await models.inventory_items.findOne({
@@ -596,6 +598,7 @@ const convertSQToSO = async (req, res) => {
                 quantity,
                 unit_price,
                 total_price,
+                wh_id
                 // Include other relevant fields from the sales quotation item
             });
 
