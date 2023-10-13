@@ -14,5 +14,6 @@ router.put('/update-item-sq', auth, salesController.updateSQItem)
 router.put('/update-item-so', auth, salesController.updateSOItem)
 router.delete('/delete-item-sq', auth, salesController.deleteSQItemAndUpdate)
 router.delete('/delete-item-so', auth, salesController.deleteSOItemAndUpdate)
+router.put('/void-so', auth, salesController.voidSO)
 
 module.exports = router

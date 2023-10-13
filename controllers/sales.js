@@ -876,7 +876,84 @@ const convertSQToSO = async (req, res) => {
     }
 };
 
+const voidSO = async (req, res) => {
+    try {
+        const { tenant_id, so_id } = req.body;
 
+        if (!tenant_id || !so_id) {
+            return res.status(400).json({ message: 'Invalid or empty request body' });
+        }
+
+        // Get all sales order items associated with the provided sales order ID
+        const salesOrderItems = await models.sales_order_items.findAll({
+            where: {
+                so_id,
+                tenant_id
+            },
+        });
+
+        if (!salesOrderItems || salesOrderItems.length === 0) {
+            return res.status(404).json({ message: `No sales order items found for Sales Order ID ${so_id}` });
+        }
+
+        // Create an array to store promises for async operations
+        const asyncOperations = [];
+
+        for (const salesOrderItem of salesOrderItems) {
+            const { inv_item_id, quantity, wh_id } = salesOrderItem;
+
+            // Find the corresponding item in the inventories table
+            const inventoryItem = await models.inventories.findOne({
+                where: {
+                    item_id: inv_item_id,
+                    warehouse_id: wh_id, // Use wh_id from the sales order item
+                    tenant_id,
+                },
+            });
+
+            if (!inventoryItem) {
+                return res.status(404).json({ message: `Inventory item with Item ID ${inv_item_id}, Warehouse ID ${wh_id}, and Tenant ID ${tenant_id} not found.` });
+            }
+
+            // Update the inventory by subtracting the quantity from "committed" and adding it to "available"
+            const updatedAvailableQuantity = (inventoryItem.available || 0) + quantity;
+            const updatedCommittedQuantity = (inventoryItem.committed || 0) - quantity;
+
+            // Update the inventory data
+            inventoryItem.available = updatedAvailableQuantity;
+            inventoryItem.committed = updatedCommittedQuantity;
+
+            // Save the updated inventory item
+            asyncOperations.push(inventoryItem.save());
+        }
+
+        // Wait for all inventory updates to complete
+        await Promise.all(asyncOperations);
+
+        // Update the sales order status to "void"
+        const salesOrderToUpdate = await models.sales_orders.findOne({
+            where: {
+                id: so_id,
+                tenant_id,
+            },
+        });
+
+        if (!salesOrderToUpdate) {
+            return res.status(404).json({ message: `Sales Order with ID ${so_id} and Tenant ID ${tenant_id} not found.` });
+        }
+
+        // Update the status to "void" (assuming "void" is an enum value)
+        salesOrderToUpdate.status = 'void';
+
+        // Save the updated sales order
+        await salesOrderToUpdate.save();
+
+        return res.status(200).json({ message: 'Sales Order Has Been Voided' });
+    } catch (error) {
+        console.error('Error updating inventory and voiding sales order:', error);
+        return res.status(500).json({ message: 'Error updating inventory and voiding sales order' });
+    }
+};
 
 
 
@@ -893,5 +970,6 @@ module.exports = {
     createSalesOrder,
     addItemToSalesOrder,
     convertSQToSO,
-    deleteSOItemAndUpdate
+    deleteSOItemAndUpdate,
+    voidSO
 }
