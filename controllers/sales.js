@@ -902,29 +902,40 @@ const voidSO = async (req, res) => {
         for (const salesOrderItem of salesOrderItems) {
             const { inv_item_id, quantity, wh_id } = salesOrderItem;
 
-            // Find the corresponding item in the inventories table
-            const inventoryItem = await models.inventories.findOne({
+            // Check if the item is marked as an inventory item in the inventory_items table
+            const inventoryItem = await models.inventory_items.findOne({
                 where: {
-                    item_id: inv_item_id,
-                    warehouse_id: wh_id, // Use wh_id from the sales order item
-                    tenant_id,
+                    id: inv_item_id,
                 },
             });
 
             if (!inventoryItem) {
-                return res.status(404).json({ message: `Inventory item with Item ID ${inv_item_id}, Warehouse ID ${wh_id}, and Tenant ID ${tenant_id} not found.` });
+                return res.status(404).json({ message: `Inventory item with ID ${inv_item_id} not found.` });
             }
 
-            // Update the inventory by subtracting the quantity from "committed" and adding it to "available"
-            const updatedAvailableQuantity = (inventoryItem.available || 0) + quantity;
-            const updatedCommittedQuantity = (inventoryItem.committed || 0) - quantity;
+            if (inventoryItem.inventory_item) {
+                // Find the corresponding item in the inventories table
+                const inventoryData = await models.inventories.findOne({
+                    where: {
+                        item_id: inv_item_id,
+                        warehouse_id: wh_id, // Use wh_id from the sales order item
+                        tenant_id,
+                    },
+                });
 
-            // Update the inventory data
-            inventoryItem.available = updatedAvailableQuantity;
-            inventoryItem.committed = updatedCommittedQuantity;
+                if (inventoryData) {
+                    // Update the inventory by subtracting the quantity from "committed" and adding it to "available"
+                    const updatedAvailableQuantity = (inventoryData.available || 0) + quantity;
+                    const updatedCommittedQuantity = (inventoryData.committed || 0) - quantity;
 
-            // Save the updated inventory item
-            asyncOperations.push(inventoryItem.save());
+                    // Update the inventory data
+                    inventoryData.available = updatedAvailableQuantity;
+                    inventoryData.committed = updatedCommittedQuantity;
+
+                    // Save the updated inventory item
+                    asyncOperations.push(inventoryData.save());
+                }
+            }
         }
 
         // Wait for all inventory updates to complete
