@@ -648,6 +648,53 @@ const updateDeliveredQuantity = async (req, res) => {
     }
 };
 
+
+
+//correct
+// const partialDelivery = async (req, res) => {
+//     try {
+//         // Get the delivery ID from the request
+//         const { delivery_id } = req.body; // You may pass deliveryId in the request body
+//
+//         // Find the delivery to get the associated sales order ID (so_id)
+//         const delivery = await models.deliveries.findByPk(delivery_id);
+//
+//         if (!delivery) {
+//             return res.status(404).json({ message: 'Delivery not found' });
+//         }
+//
+//         // Get the associated sales order ID
+//         const salesOrderId = delivery.so_id;
+//
+//         // Find all delivery items for the specified sales order
+//         const deliveryItems = await models.delivery_items.findAll({
+//             where: {
+//                 so_id: salesOrderId,
+//             },
+//         });
+//
+//         // Update remaining_quantity for each delivery item
+//         for (const deliveryItem of deliveryItems) {
+//             // Calculate the sum of delivered_quantity for this delivery item
+//             const deliveredQuantitySum = deliveryItems
+//                 .filter((item) => item.inv_item_id === deliveryItem.inv_item_id)
+//                 .reduce((sum, item) => sum + item.delivered_quantity, 0);
+//
+//             // Calculate the updated remaining_quantity
+//             const remainingQuantity = deliveryItem.so_quantity - deliveredQuantitySum;
+//
+//             // Update the remaining_quantity in the database for this delivery item
+//             await deliveryItem.update({ remaining_quantity: remainingQuantity });
+//         }
+//
+//         res.status(200).json({ message: 'Remaining quantities updated successfully' });
+//     } catch (error) {
+//         console.error('Error updating remaining quantities:', error);
+//         res.status(500).json({ message: 'Error updating remaining quantities' });
+//     }
+// };
+
+
 const partialDelivery = async (req, res) => {
     try {
         // Get the delivery ID from the request
@@ -670,7 +717,7 @@ const partialDelivery = async (req, res) => {
             },
         });
 
-        // Update remaining_quantity for each delivery item
+        // Iterate through each item in the delivery
         for (const deliveryItem of deliveryItems) {
             // Calculate the sum of delivered_quantity for this delivery item
             const deliveredQuantitySum = deliveryItems
@@ -682,12 +729,25 @@ const partialDelivery = async (req, res) => {
 
             // Update the remaining_quantity in the database for this delivery item
             await deliveryItem.update({ remaining_quantity: remainingQuantity });
+
+            // Find the corresponding sales_order_items entry for this item
+            const salesOrderItem = await models.sales_order_items.findOne({
+                where: {
+                    so_id: salesOrderId,
+                    inv_item_id: deliveryItem.inv_item_id,
+                },
+            });
+
+            if (salesOrderItem) {
+                // Update the delivered_qty in the sales_order_items table
+                await salesOrderItem.update({ delivered_qty: deliveredQuantitySum });
+            }
         }
 
-        res.status(200).json({ message: 'Remaining quantities updated successfully' });
+        res.status(200).json({ message: 'Remaining quantities and delivered quantities updated successfully' });
     } catch (error) {
-        console.error('Error updating remaining quantities:', error);
-        res.status(500).json({ message: 'Error updating remaining quantities' });
+        console.error('Error updating quantities:', error);
+        res.status(500).json({ message: 'Error updating quantities' });
     }
 };
 
