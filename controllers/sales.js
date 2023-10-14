@@ -212,16 +212,16 @@ const addItemToSQ = async (req, res) => {
 
 const addItemToSalesOrder = async (req, res) => {
     try {
-        console.log(req.body, 'req body!!')
         const salesOrderId = req.body.so_id;
         const newItemData = req.body;
+        let inventoryData = null; // Define inventoryData as null by default
 
         // Calculate the total_price for the new item and round to 2 decimal places
         const newItemTotalPrice = newItemData.unit_price * newItemData.quantity;
 
         // Format the total price with two decimal places
         const formattedTotalPrice = newItemTotalPrice.toFixed(2);
-        console.log('done!!')
+
         // Insert the new item into the sales_order_items table
         const createdItem = await models.so_items.create({
             tenant_id: newItemData.tenant_id,
@@ -274,7 +274,7 @@ const addItemToSalesOrder = async (req, res) => {
         });
 
         if (inventoryItem) {
-            const inventoryData = await models.inventories.findOne({
+            inventoryData = await models.inventories.findOne({
                 where: {
                     tenant_id: newItemData.tenant_id,
                     item_id: newItemData.inv_item_id,
@@ -282,47 +282,47 @@ const addItemToSalesOrder = async (req, res) => {
                 },
             });
 
-            if (inventoryData) {
-                // Item exists in inventories, update the available and committed quantities
-                const currentInStockQuantity = inventoryData.in_stock || 0;
-                const currentCommittedQuantity = inventoryData.committed || 0;
-                const currentAvailableQuantity = currentInStockQuantity - currentCommittedQuantity;
+            // Calculate the updated available and committed quantities without stock availability check
+            const updatedAvailableQuantity = (inventoryData.available || 0) - newItemData.quantity;
+            const updatedCommittedQuantity = (inventoryData.committed || 0) + newItemData.quantity;
 
-                if (newItemData.quantity > currentAvailableQuantity) {
-                    return res.status(400).json({ error: 'Not enough items in stock' });
-                }
+            // Update inventory data
+            await inventoryData.update({
+                available: updatedAvailableQuantity,
+                committed: updatedCommittedQuantity,
+            });
+        } else {
+            // Item doesn't exist in inventories, create a new entry with updated available and committed quantities
+            const newAvailableQuantity = -newItemData.quantity;
+            const newCommittedQuantity = newItemData.quantity;
 
-                // Calculate the updated available and committed quantities
-                const updatedAvailableQuantity = currentAvailableQuantity - newItemData.quantity;
-                const updatedCommittedQuantity = currentCommittedQuantity + newItemData.quantity;
-
-                await inventoryData.update({
-                    available: updatedAvailableQuantity,
-                    committed: updatedCommittedQuantity,
-                });
-            } else {
-                // Item doesn't exist in inventories, create a new entry with updated available and committed quantities
-                const newAvailableQuantity = -newItemData.quantity;
-                const newCommittedQuantity = newItemData.quantity;
-
-                await models.inventories.create({
-                    tenant_id: newItemData.tenant_id,
-                    item_id: newItemData.inv_item_id,
-                    warehouse_id: newItemData.wh_id,
-                    available: newAvailableQuantity,
-                    committed: newCommittedQuantity,
-                    in_stock: 0,
-                    // Other columns as needed
-                });
-            }
+            inventoryData = await models.inventories.create({
+                tenant_id: newItemData.tenant_id,
+                item_id: newItemData.inv_item_id,
+                warehouse_id: newItemData.wh_id,
+                available: newAvailableQuantity,
+                committed: newCommittedQuantity,
+                in_stock: 0,
+                // Other columns as needed
+            });
         }
 
-        res.status(200).json({ message: 'Item added to sales order successfully', data: createdItem });
+        // Send the entire response back
+        res.status(200).json({
+            message: 'Item added to sales order successfully',
+            data: {
+                item: createdItem,
+                salesOrder: salesOrder,
+                inventoryData: inventoryData,
+            },
+        });
     } catch (error) {
         console.error('Error adding item to sales order:', error);
         res.status(500).json({ error: 'Failed to add item to sales order' });
     }
 };
+
+
 
 //
 const updateSQItem = async (req, res) => {
