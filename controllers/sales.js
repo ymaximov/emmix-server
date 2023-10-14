@@ -119,7 +119,7 @@ const getSODataBySoID = async (req, res, next) => {
                     // as: 'users', // Alias for the included user details
                 },
                 {
-                    model: models.sales_order_items,
+                    model: models.so_items,
                     include: [
                         {
                             model: models.inventory_items,
@@ -212,6 +212,7 @@ const addItemToSQ = async (req, res) => {
 
 const addItemToSalesOrder = async (req, res) => {
     try {
+        console.log(req.body, 'req body!!')
         const salesOrderId = req.body.so_id;
         const newItemData = req.body;
 
@@ -220,9 +221,9 @@ const addItemToSalesOrder = async (req, res) => {
 
         // Format the total price with two decimal places
         const formattedTotalPrice = newItemTotalPrice.toFixed(2);
-
+        console.log('done!!')
         // Insert the new item into the sales_order_items table
-        const createdItem = await models.sales_order_items.create({
+        const createdItem = await models.so_items.create({
             tenant_id: newItemData.tenant_id,
             so_id: salesOrderId,
             wh_id: newItemData.wh_id,
@@ -233,7 +234,7 @@ const addItemToSalesOrder = async (req, res) => {
         });
 
         // Fetch all items for the corresponding sales order
-        const items = await models.sales_order_items.findAll({
+        const items = await models.so_items.findAll({
             where: { so_id: salesOrderId },
         });
 
@@ -323,239 +324,7 @@ const addItemToSalesOrder = async (req, res) => {
     }
 };
 
-// const addItemToSalesOrder = async (req, res) => {
-//     try {
-//         const salesOrderId = req.body.so_id;
-//         const newItemData = req.body;
-//         console.log(req.body, 'Req Body');
 //
-//         // Calculate the total_price for the new item and round to 2 decimal places
-//         const newItemTotalPrice = newItemData.unit_price * newItemData.quantity;
-//
-//         // Format the total price with two decimal places
-//         const formattedTotalPrice = newItemTotalPrice.toFixed(2);
-//
-//         // Insert the new item into the sales_order_items table
-//         const createdItem = await models.sales_order_items.create({
-//             tenant_id: newItemData.tenant_id,
-//             so_id: salesOrderId,
-//             wh_id: newItemData.wh_id,
-//             inv_item_id: newItemData.inv_item_id,
-//             quantity: newItemData.quantity,
-//             unit_price: newItemData.unit_price,
-//             total_price: formattedTotalPrice, // Formatted to always have two decimal places
-//         });
-//         console.log('created Sales Order Item');
-//
-//         // Fetch all items for the corresponding sales order
-//         const items = await models.sales_order_items.findAll({
-//             where: { so_id: salesOrderId },
-//         });
-//
-//         // Calculate the new subtotal for the sales order
-//         const newSubtotal = items.reduce((subtotal, item) => subtotal + parseFloat(item.total_price), 0).toFixed(2);
-//
-//         // Find the sales order associated with this salesOrderId
-//         const salesOrder = await models.sales_orders.findByPk(salesOrderId);
-//         if (!salesOrder) {
-//             return res.status(404).json({ error: 'Sales order not found' });
-//         }
-//
-//         // Update the sales order with the new subtotal
-//         await salesOrder.update({ subtotal: newSubtotal });
-//
-//         // Calculate the new sales_tax based on the new subtotal and tax_rate (considered as a percentage)
-//         const taxRatePercentage = salesOrder.tax_rate; // Example: 10% tax_rate
-//         const taxRateDecimal = taxRatePercentage / 100; // Convert percentage to decimal (0.10)
-//         const newSalesTax = (newSubtotal * taxRateDecimal).toFixed(2);
-//
-//         // Calculate the new total_amount as the sum of newSalesTax and newSubtotal
-//         const newTotalAmount = (parseFloat(newSalesTax) + parseFloat(newSubtotal)).toFixed(2);
-//
-//         // Update the sales_orders table with the new sales_tax and total_amount
-//         await salesOrder.update({
-//             sales_tax: newSalesTax,
-//             total_amount: newTotalAmount,
-//         });
-//         console.log('updated subtotal');
-//
-//         // Handle inventory updates if it's an inventory item
-//         const inventoryItem = await models.inventory_items.findOne({
-//             where: {
-//                 tenant_id: newItemData.tenant_id,
-//                 id: newItemData.inv_item_id,
-//                 inventory_item: true, // Check if it's an inventory item
-//             },
-//         });
-//
-//         if (inventoryItem) {
-//             // const warehouseId = inventoryItem.default_wh;
-//
-//             const inventoryData = await models.inventories.findOne({
-//                 where: {
-//                     tenant_id: newItemData.tenant_id,
-//                     item_id: newItemData.inv_item_id,
-//                     warehouse_id: newItemData.wh_id,
-//                 },
-//             });
-//
-//             if (inventoryData) {
-//                 // Item exists in inventories, update the available and committed quantities
-//                 const currentAvailableQuantity = inventoryData.available || 0;
-//                 const currentCommittedQuantity = inventoryData.committed || 0;
-//
-//                 // Calculate the updated available and committed quantities
-//                 const updatedAvailableQuantity = (currentAvailableQuantity - newItemData.quantity) || -newItemData.quantity;
-//                 const updatedCommittedQuantity = currentCommittedQuantity + newItemData.quantity;
-//
-//                 await inventoryData.update({
-//                     available: updatedAvailableQuantity,
-//                     committed: updatedCommittedQuantity,
-//                 });
-//             } else {
-//                 // Item doesn't exist in inventories, create a new entry with negative available and the newly added quantity in committed
-//                 await models.inventories.create({
-//                     tenant_id: newItemData.tenant_id,
-//                     item_id: newItemData.inv_item_id,
-//                     warehouse_id: newItemData.wh_id,
-//                     available: -newItemData.quantity,
-//                     committed: newItemData.quantity,
-//                     // Other columns as needed
-//                 });
-//             }
-//         }
-//
-//         res.status(200).json({ message: 'Item added to sales order successfully', data: createdItem });
-//     } catch (error) {
-//         console.error('Error adding item to sales order:', error);
-//         res.status(500).json({ error: 'Failed to add item to sales order' });
-//     }
-// };
-
-
-// const addItemToSQ = async (req, res) => {
-//     try {
-//         const { tenant_id, user_id, inv_item_id, quantity, unit_price, sq_id } = req.body;
-//         console.log(req.body, 'req body!!');
-//
-//         // Calculate the total_price
-//         const total_price = quantity * unit_price;
-//
-//         // Insert the new item into the sales_quotation_items table
-//         const createdItem = await models.sales_quotation_items.create({
-//             tenant_id,
-//             user_id,
-//             inv_item_id,
-//             quantity,
-//             unit_price,
-//             total_price,
-//             sq_id,
-//         });
-//
-//         // Fetch all items for the corresponding sales quotation (sq_id)
-//         const items = await models.sales_quotation_items.findAll({
-//             where: { sq_id },
-//         });
-//
-//         // Calculate the new subtotal for the sales quotation
-//         // const newSubtotal = items.reduce((subtotal, item) => subtotal + item.total_price, 0);
-//         const newSubtotal = items.reduce((subtotal, item) => subtotal + parseFloat(item.total_price), 0).toFixed(2);
-//         // Fetch the sales_quotations record
-//         const salesQuotation = await models.sales_quotations.findByPk(sq_id);
-//
-//         if (!salesQuotation) {
-//             return res.status(404).json({ error: 'Sales quotation not found' });
-//         }
-//
-//         // Use the existing tax_rate from the sales_quotations table
-//         const taxRate = salesQuotation.tax_rate;
-//
-//         // Calculate the new sales_tax based on tax_rate and newSubtotal
-//         let salesTax = 0;
-//         if (taxRate !== null && taxRate !== 0) {
-//             salesTax = (taxRate / 100) * newSubtotal; // Divide by 100 to convert percentage to decimal
-//         }
-//
-//         // Calculate the new total_amount
-//         const totalAmount = newSubtotal + salesTax;
-//
-//         // Update the sales_quotations record with the new subtotal, calculated sales_tax, and total_amount
-//         await salesQuotation.update({
-//             subtotal: newSubtotal,
-//             sales_tax: salesTax,
-//             total_amount: totalAmount,
-//         });
-//
-//         return res.status(200).json({ message: 'Item added to sales quotation successfully', data: createdItem });
-//     } catch (error) {
-//         console.error('Error adding item to sales quotation:', error);
-//         res.status(500).json({ error: 'Failed to add item to sales quotation' });
-//     }
-// };
-
-
-
-
-
-
-// const addItemToSQ = async (req, res) => {
-//     try {
-//         const { tenant_id, user_id, inv_item_id, quantity, unit_price, sq_id, tax_rate } = req.body;
-//
-//         // Calculate the total_price
-//         const total_price = quantity * unit_price;
-//
-//         // Insert the new item into the sales_quotation_items table
-//         const createdItem = await models.sales_quotation_items.create({
-//             tenant_id,
-//             user_id,
-//             inv_item_id,
-//             quantity,
-//             unit_price,
-//             total_price,
-//             sq_id,
-//             tax_rate
-//         });
-//
-//         // Fetch all items for the corresponding sales quotation (sq_id)
-//         const items = await models.sales_quotation_items.findAll({
-//             where: { sq_id },
-//         });
-//
-//         // Calculate the new subtotal for the sales quotation
-//         const newSubtotal = items.reduce((subtotal, item) => subtotal + item.total_price, 0);
-//
-//         // Fetch the sales_quotations record
-//         const salesQuotation = await models.sales_quotations.findByPk(sq_id);
-//
-//         if (!salesQuotation) {
-//             return res.status(404).json({ error: 'Sales quotation not found' });
-//         }
-//
-//         // Update the sales_quotations record with the new subtotal and total_amount
-//         const salesTax = salesQuotation.sales_tax;
-//
-//         if (salesTax === 0 || salesTax === null) {
-//             // If sales_tax is 0 or null, set total_amount to be the same as subtotal
-//             await salesQuotation.update({
-//                 subtotal: newSubtotal,
-//                 total_amount: newSubtotal,
-//             });
-//         } else {
-//             // Otherwise, calculate total_amount based on sales_tax
-//             await salesQuotation.update({
-//                 subtotal: newSubtotal,
-//                 total_amount: newSubtotal * salesTax,
-//             });
-//         }
-//
-//         return res.status(200).json({ message: 'Item added to sales quotation successfully', data: createdItem });
-//     } catch (error) {
-//         console.error('Error adding item to sales quotation:', error);
-//         res.status(500).json({ error: 'Failed to add item to sales quotation' });
-//     }
-// };
-
 const updateSQItem = async (req, res) => {
     try {
         const tenant_id = req.body.tenant_id;
@@ -622,7 +391,7 @@ const updateSOItem = async (req, res) => {
         const newUnitPrice = req.body.unit_price;
         const wh_id = req.body.wh_id; // Warehouse ID from the front end
 
-        const salesOrderItem = await models.sales_order_items.findOne({
+        const salesOrderItem = await models.so_items.findOne({
             where: { tenant_id, id: item_id },
         });
 
@@ -711,7 +480,7 @@ const updateSOItem = async (req, res) => {
         });
 
         // Update the sales_orders table with the new subtotal, sales_tax, and total_amount
-        const relatedItems = await models.sales_order_items.findAll({
+        const relatedItems = await models.so_items.findAll({
             where: { so_id: salesOrderItem.so_id },
         });
 

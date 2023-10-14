@@ -43,10 +43,6 @@ module.exports = {
         type: Sequelize.INTEGER,
         allowNull: false,
       },
-      delivered_quantity: {
-        type: Sequelize.INTEGER,
-        allowNull: false,
-      },
       unit_price: {
         type: Sequelize.DECIMAL(10, 2),
         allowNull: false,
@@ -54,6 +50,11 @@ module.exports = {
       total_price: {
         type: Sequelize.DECIMAL(10, 2),
         allowNull: false,
+      },
+      status: {
+        type: Sequelize.ENUM('open', 'closed'),
+        allowNull: false,
+        defaultValue: 'open', // You can set the default status as needed
       },
       createdAt: {
         allowNull: false,
@@ -69,6 +70,6 @@ module.exports = {
   },
 
   down: async (queryInterface, Sequelize) => {
-    await queryInterface.dropTable('sales_order_items');
+    await queryInterface.dropTable('so_items');
   },
 };

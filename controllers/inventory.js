@@ -449,7 +449,7 @@ const createDelivery = async (req, res) => {
         }
 
         // Check if there are open sales order items for the given sales order and warehouse
-        const openSalesOrderItems = await models.sales_order_items.findAll({
+        const openSalesOrderItems = await models.so_items.findAll({
             where: {
                 so_id,
                 wh_id,
@@ -716,7 +716,7 @@ const partialDelivery = async (req, res) => {
                 await deliveryItem.update({ remaining_quantity: remainingQuantity });
 
                 // Find the corresponding sales_order_items entry for this item
-                const salesOrderItem = await models.sales_order_items.findOne({
+                const salesOrderItem = await models.so_items.findOne({
                     where: {
                         so_id: salesOrderId,
                         inv_item_id: deliveryItem.inv_item_id,
