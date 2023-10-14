@@ -62,7 +62,7 @@ module.exports = (sequelize, DataTypes) => {
             },
             remaining_quantity: {
                 type: DataTypes.INTEGER,
-                allowNull: false
+                allowNull: true
             },
             createdAt: {
                 allowNull: false,

@@ -290,6 +290,7 @@ const updateInventoryForGoodsReceipt = async (req, res) => {
     }
 };
 
+
 const createDelivery = async (req, res) => {
     try {
         const { tenant_id, so_id, wh_id, picker_id } = req.body;
@@ -298,46 +299,27 @@ const createDelivery = async (req, res) => {
             return res.status(400).json({ message: 'Invalid or empty request body' });
         }
 
-        // Check if there is an open delivery for the given sales order and warehouse
-        const existingOpenDelivery = await models.deliveries.findOne({
+        // Fetch the existing deliveries for the given sales order and warehouse
+        const existingDeliveries = await models.deliveries.findAll({
             where: {
                 so_id,
                 wh_id,
-                status: 'open',
+                status: 'closed', // Only consider closed deliveries
             },
+            include: [
+                {
+                    model: models.delivery_items,
+                },
+            ],
         });
 
-        if (existingOpenDelivery) {
-            // If an open delivery exists, return its data
-
-            const existingDeliveryItems = await models.delivery_items.findAll({
-                where: { delivery_id: existingOpenDelivery.id },
-            });
-
-            // Fetch customer details based on customer_id
-            const customerDetails = await models.customers.findByPk(existingOpenDelivery.customer_id);
-
-            const deliveryItemDetailsPromises = existingDeliveryItems.map(async (item) => {
-                const inventoryItem = await models.inventory_items.findByPk(item.inv_item_id);
-                const stockData = await models.inventories.findOne({
-                    where: {
-                        item_id: item.inv_item_id,
-                        warehouse_id: wh_id, // Use the requested warehouse ID
-                    },
-                });
-                return { ...item.dataValues, inventoryItem, stockData };
-            });
-
-            const deliveryItemDetails = await Promise.all(deliveryItemDetailsPromises);
-
-            // Send the data to the front end with a status of 200
-            return res.status(200).json({
-                delivery: {
-                    ...existingOpenDelivery.dataValues,
-                    customerDetails,
-                },
-                deliveryItems: deliveryItemDetails,
-            });
+        // Calculate delivered quantities for each item from existing deliveries
+        const deliveredQuantities = {};
+        for (const delivery of existingDeliveries) {
+            for (const deliveryItem of delivery.delivery_items) {
+                deliveredQuantities[deliveryItem.inv_item_id] =
+                    (deliveredQuantities[deliveryItem.inv_item_id] || 0) + deliveryItem.delivered_quantity;
+            }
         }
 
         // Create a new delivery based on the sales order
@@ -363,6 +345,29 @@ const createDelivery = async (req, res) => {
             tracking: '',
         });
 
+        // Check if there's an existing open delivery
+        const existingOpenDelivery = await models.deliveries.findOne({
+            where: {
+                so_id,
+                wh_id,
+                status: 'open',
+            },
+            include: [
+                {
+                    model: models.delivery_items,
+                },
+            ],
+        });
+
+        if (existingOpenDelivery) {
+            // Update the delivered_quantity of delivery_items to 0
+            for (const deliveryItem of existingOpenDelivery.delivery_items) {
+                await models.delivery_items.update({ delivered_quantity: 0 }, {
+                    where: { id: deliveryItem.id },
+                });
+            }
+        }
+
         // Fetch customer details based on customer_id
         const customerDetails = await models.customers.findByPk(newDelivery.customer_id);
 
@@ -378,7 +383,17 @@ const createDelivery = async (req, res) => {
 
         for (const salesOrderItem of salesOrderItems) {
             const { inv_item_id, quantity } = salesOrderItem;
-            const remainingQuantity = quantity;
+
+            // Fetch the delivered quantities for this sales order item
+            const deliveredQuantity = await models.delivery_items.sum('delivered_quantity', {
+                where: {
+                    so_id,
+                    inv_item_id,
+                },
+            });
+
+            // Calculate the remaining quantity
+            const remainingQuantity = quantity - deliveredQuantity;
 
             // Fetch inventory item details for the current item
             const inventoryItemDetails = await models.inventory_items.findByPk(inv_item_id);
@@ -393,6 +408,9 @@ const createDelivery = async (req, res) => {
                 delivery_id: newDelivery.id,
                 inv_item_id,
                 so_quantity: quantity,
+                delivered_quantity: 0,
+                received_quantity: 0,
+                remaining_quantity: remainingQuantity,
             };
 
             const createdDeliveryItem = await models.delivery_items.create(newDeliveryItem);
@@ -407,7 +425,7 @@ const createDelivery = async (req, res) => {
             newDeliveryItems.push({ ...createdDeliveryItem.dataValues, inventoryItem: inventoryItemDetails, stockData });
         }
 
-        // Send the data to the front end with a status of 200
+        // Send the data to the front end with a status of 200, including the remaining_quantity
         return res.status(200).json({
             delivery: {
                 ...newDelivery.dataValues,
@@ -421,41 +439,136 @@ const createDelivery = async (req, res) => {
     }
 };
 
-// const getDeliveryById = async (req, res) => {
-//     console.log(req.params, 'Req Params')
-//     const deliveryId = req.params.id; // Assuming the delivery ID is passed as a URL parameter
-//
+
+
+
+
+
+//corrrrrect
+// const createDelivery = async (req, res) => {
 //     try {
-//         // Retrieve delivery details by ID and include associated delivery items
-//         const delivery = await models.deliveries.findByPk(deliveryId, {
+//         const { tenant_id, so_id, wh_id, picker_id } = req.body;
+//
+//         if (!tenant_id || !so_id || !wh_id) {
+//             return res.status(400).json({ message: 'Invalid or empty request body' });
+//         }
+//
+//         // Fetch the existing deliveries for the given sales order and warehouse
+//         const existingDeliveries = await models.deliveries.findAll({
+//             where: {
+//                 so_id,
+//                 wh_id,
+//                 status: 'closed', // Only consider closed deliveries
+//             },
 //             include: [
 //                 {
-//                     model: models.delivery_items, // Include associated delivery items
-//                     include: [
-//                         {
-//                             model: models.inventory_items, // Include associated inventory items
-//                             attributes: { exclude: [] }, // Retrieve all columns from inventory_items
-//                         },
-//                     ],
-//                 },
-//                 {
-//                     model: models.customers, // Include associated customer details
-//                     attributes: { exclude: [] }, // Retrieve all columns from customers
+//                     model: models.delivery_items,
 //                 },
 //             ],
 //         });
 //
-//         if (!delivery) {
-//             return res.status(404).json({ message: 'Delivery not found' });
+//         // Calculate delivered quantities for each item from existing deliveries
+//         const deliveredQuantities = {};
+//         for (const delivery of existingDeliveries) {
+//             for (const deliveryItem of delivery.delivery_items) {
+//                 deliveredQuantities[deliveryItem.inv_item_id] =
+//                     (deliveredQuantities[deliveryItem.inv_item_id] || 0) + deliveryItem.delivered_quantity;
+//             }
 //         }
 //
-//         // Send the retrieved delivery data to the front end
-//         return res.status(200).json({ delivery });
+//         // Create a new delivery based on the sales order
+//         const salesOrder = await models.sales_orders.findByPk(so_id);
+//
+//         if (!salesOrder) {
+//             return res.status(404).json({ message: `Sales Order with ID ${so_id} not found.` });
+//         }
+//
+//         // Extract the 'invoiced' status from the sales order
+//         const { invoiced } = salesOrder;
+//
+//         const newDelivery = await models.deliveries.create({
+//             tenant_id,
+//             so_id,
+//             wh_id,
+//             customer_id: salesOrder.customer_id,
+//             picker_id,
+//             status: 'open', // Status set to 'open' for a new delivery
+//             invoiced, // Invoiced status from the sales order
+//             posting_date: salesOrder.posting_date,
+//             comments: salesOrder.comments,
+//             tracking: '',
+//         });
+//
+//         // Fetch customer details based on customer_id
+//         const customerDetails = await models.customers.findByPk(newDelivery.customer_id);
+//
+//         const newDeliveryItems = [];
+//
+//         const salesOrderItems = await models.sales_order_items.findAll({
+//             where: {
+//                 so_id,
+//                 wh_id,
+//                 status: 'open', // Ensure status is 'open' for sales order items
+//             },
+//         });
+//
+//         for (const salesOrderItem of salesOrderItems) {
+//             const { inv_item_id, quantity } = salesOrderItem;
+//
+//             // Fetch the delivered quantities for this sales order item
+//             const deliveredQuantity = await models.delivery_items.sum('delivered_quantity', {
+//                 where: {
+//                     so_id,
+//                     inv_item_id,
+//                 },
+//             });
+//
+//             const remainingQuantity = quantity - deliveredQuantity;
+//
+//             // Fetch inventory item details for the current item
+//             const inventoryItemDetails = await models.inventory_items.findByPk(inv_item_id);
+//
+//             if (!inventoryItemDetails) {
+//                 return res.status(404).json({ message: `Inventory Item with ID ${inv_item_id} not found.` });
+//             }
+//
+//             const newDeliveryItem = {
+//                 tenant_id,
+//                 so_id,
+//                 delivery_id: newDelivery.id,
+//                 inv_item_id,
+//                 so_quantity: quantity,
+//                 delivered_quantity: 0,
+//                 remaining_quantity: remainingQuantity,
+//                 received_quantity: 0,
+//             };
+//
+//             const createdDeliveryItem = await models.delivery_items.create(newDeliveryItem);
+//
+//             const stockData = await models.inventories.findOne({
+//                 where: {
+//                     item_id: inv_item_id,
+//                     warehouse_id: wh_id, // Use the requested warehouse ID
+//                 },
+//             });
+//
+//             newDeliveryItems.push({ ...createdDeliveryItem.dataValues, inventoryItem: inventoryItemDetails, stockData });
+//         }
+//
+//         // Send the data to the front end with a status of 200
+//         return res.status(200).json({
+//             delivery: {
+//                 ...newDelivery.dataValues,
+//                 customerDetails,
+//             },
+//             deliveryItems: newDeliveryItems,
+//         });
 //     } catch (error) {
-//         console.error('Error retrieving delivery data:', error);
-//         return res.status(500).json({ message: 'Error retrieving delivery data' });
+//         console.error('Error creating or retrieving delivery and delivery items:', error);
+//         return res.status(500).json({ message: 'Error creating or retrieving delivery and delivery items' });
 //     }
 // };
+
 
 
 const getDeliveryById = async (req, res) => {
@@ -468,7 +581,11 @@ const getDeliveryById = async (req, res) => {
             include: [
                 {
                     model: models.delivery_items, // Include associated delivery items
-                    attributes: ['inv_item_id', 'so_quantity', 'remaining_quantity', 'delivered_quantity'], // Include relevant attributes
+                    attributes: ['id', 'inv_item_id', 'so_quantity', 'remaining_quantity', 'delivered_quantity'], // Include relevant attributes
+                },
+                {
+                    model: models.customers, // Include associated customer details
+                    attributes: { exclude: [] }, // Retrieve all columns from customers
                 },
             ],
         });
@@ -498,7 +615,7 @@ const getDeliveryById = async (req, res) => {
             })
         );
 
-        // Send the retrieved delivery data with delivery items, inventory, and inventory item details to the front end
+        // Send the retrieved delivery data with delivery items, inventory, inventory item details, and customer details to the front end
         return res.status(200).json({ delivery: { ...delivery.dataValues, deliveryItems: deliveryItemsWithDetails } });
     } catch (error) {
         console.error('Error retrieving delivery data:', error);
@@ -506,21 +623,73 @@ const getDeliveryById = async (req, res) => {
     }
 };
 
+const updateDeliveredQuantity = async (req, res) => {
+    try {
+        const { item_id, delivered_qty } = req.body;
 
+        if (!item_id || delivered_qty === undefined) {
+            return res.status(400).json({ message: 'Invalid or empty request body' });
+        }
 
+        const deliveryItem = await models.delivery_items.findByPk(item_id);
 
+        if (!deliveryItem) {
+            return res.status(404).json({ message: 'Delivery item not found' });
+        }
 
+        // Update the delivered_quantity for the delivery item
+        await deliveryItem.update({ delivered_quantity: delivered_qty });
 
+        // Return a success response
+        return res.status(200).json({ message: 'Delivered quantity updated successfully' });
+    } catch (error) {
+        console.error('Error updating delivered quantity:', error);
+        return res.status(500).json({ message: 'Error updating delivered quantity' });
+    }
+};
 
+const partialDelivery = async (req, res) => {
+    try {
+        // Get the delivery ID from the request
+        const { delivery_id } = req.body; // You may pass deliveryId in the request body
 
+        // Find the delivery to get the associated sales order ID (so_id)
+        const delivery = await models.deliveries.findByPk(delivery_id);
 
+        if (!delivery) {
+            return res.status(404).json({ message: 'Delivery not found' });
+        }
 
+        // Get the associated sales order ID
+        const salesOrderId = delivery.so_id;
 
+        // Find all delivery items for the specified sales order
+        const deliveryItems = await models.delivery_items.findAll({
+            where: {
+                so_id: salesOrderId,
+            },
+        });
 
+        // Update remaining_quantity for each delivery item
+        for (const deliveryItem of deliveryItems) {
+            // Calculate the sum of delivered_quantity for this delivery item
+            const deliveredQuantitySum = deliveryItems
+                .filter((item) => item.inv_item_id === deliveryItem.inv_item_id)
+                .reduce((sum, item) => sum + item.delivered_quantity, 0);
 
+            // Calculate the updated remaining_quantity
+            const remainingQuantity = deliveryItem.so_quantity - deliveredQuantitySum;
 
+            // Update the remaining_quantity in the database for this delivery item
+            await deliveryItem.update({ remaining_quantity: remainingQuantity });
+        }
 
-
+        res.status(200).json({ message: 'Remaining quantities updated successfully' });
+    } catch (error) {
+        console.error('Error updating remaining quantities:', error);
+        res.status(500).json({ message: 'Error updating remaining quantities' });
+    }
+};
 
 
 
@@ -538,5 +707,7 @@ module.exports = {
     updateInventoryItem,
     getStockData,
     updateInventoryForGoodsReceipt,
-    getDeliveryById
+    getDeliveryById,
+    updateDeliveredQuantity,
+    partialDelivery
 }
