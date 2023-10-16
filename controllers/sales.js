@@ -884,7 +884,7 @@ const voidSO = async (req, res) => {
         }
 
         // Get all sales order items associated with the provided sales order ID
-        const salesOrderItems = await models.sales_order_items.findAll({
+        const salesOrderItems = await models.so_items.findAll({
             where: {
                 so_id,
                 tenant_id
