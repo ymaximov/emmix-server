@@ -282,29 +282,31 @@ const addItemToSalesOrder = async (req, res) => {
                 },
             });
 
-            // Calculate the updated available and committed quantities without stock availability check
-            const updatedAvailableQuantity = (inventoryData.available || 0) - newItemData.quantity;
-            const updatedCommittedQuantity = (inventoryData.committed || 0) + newItemData.quantity;
+            if (inventoryData) {
+                // Calculate the updated available and committed quantities
+                const updatedAvailableQuantity = (inventoryData.available || 0) - newItemData.quantity;
+                const updatedCommittedQuantity = (inventoryData.committed || 0) + newItemData.quantity;
 
-            // Update inventory data
-            await inventoryData.update({
-                available: updatedAvailableQuantity,
-                committed: updatedCommittedQuantity,
-            });
-        } else {
-            // Item doesn't exist in inventories, create a new entry with updated available and committed quantities
-            const newAvailableQuantity = -newItemData.quantity;
-            const newCommittedQuantity = newItemData.quantity;
+                // Update inventory data
+                await inventoryData.update({
+                    available: updatedAvailableQuantity,
+                    committed: updatedCommittedQuantity,
+                });
+            } else {
+                // Item doesn't exist in inventories, create a new entry with updated available and committed quantities
+                const newAvailableQuantity = -(newItemData.quantity || 0); // Treat null as 0
+                const newCommittedQuantity = newItemData.quantity || 0; // Treat null as 0
 
-            inventoryData = await models.inventories.create({
-                tenant_id: newItemData.tenant_id,
-                item_id: newItemData.inv_item_id,
-                warehouse_id: newItemData.wh_id,
-                available: newAvailableQuantity,
-                committed: newCommittedQuantity,
-                in_stock: 0,
-                // Other columns as needed
-            });
+                inventoryData = await models.inventories.create({
+                    tenant_id: newItemData.tenant_id,
+                    item_id: newItemData.inv_item_id,
+                    warehouse_id: newItemData.wh_id,
+                    available: newAvailableQuantity,
+                    committed: newCommittedQuantity,
+                    in_stock: 0,
+                    // Other columns as needed
+                });
+            }
         }
 
         // Send the entire response back
@@ -321,6 +323,120 @@ const addItemToSalesOrder = async (req, res) => {
         res.status(500).json({ error: 'Failed to add item to sales order' });
     }
 };
+
+
+
+// const addItemToSalesOrder = async (req, res) => {
+//     try {
+//         const salesOrderId = req.body.so_id;
+//         const newItemData = req.body;
+//         let inventoryData = null; // Define inventoryData as null by default
+//
+//         // Calculate the total_price for the new item and round to 2 decimal places
+//         const newItemTotalPrice = newItemData.unit_price * newItemData.quantity;
+//
+//         // Format the total price with two decimal places
+//         const formattedTotalPrice = newItemTotalPrice.toFixed(2);
+//
+//         // Insert the new item into the sales_order_items table
+//         const createdItem = await models.so_items.create({
+//             tenant_id: newItemData.tenant_id,
+//             so_id: salesOrderId,
+//             wh_id: newItemData.wh_id,
+//             inv_item_id: newItemData.inv_item_id,
+//             quantity: newItemData.quantity,
+//             unit_price: newItemData.unit_price,
+//             total_price: formattedTotalPrice, // Formatted to always have two decimal places
+//         });
+//
+//         // Fetch all items for the corresponding sales order
+//         const items = await models.so_items.findAll({
+//             where: { so_id: salesOrderId },
+//         });
+//
+//         // Calculate the new subtotal for the sales order
+//         const newSubtotal = items.reduce((subtotal, item) => subtotal + parseFloat(item.total_price), 0).toFixed(2);
+//
+//         // Find the sales order associated with this salesOrderId
+//         const salesOrder = await models.sales_orders.findByPk(salesOrderId);
+//         if (!salesOrder) {
+//             return res.status(404).json({ error: 'Sales order not found' });
+//         }
+//
+//         // Update the sales order with the new subtotal
+//         await salesOrder.update({ subtotal: newSubtotal });
+//
+//         // Calculate the new sales_tax based on the new subtotal and tax_rate (considered as a percentage)
+//         const taxRatePercentage = salesOrder.tax_rate; // Example: 10% tax_rate
+//         const taxRateDecimal = taxRatePercentage / 100; // Convert percentage to decimal (0.10)
+//         const newSalesTax = (newSubtotal * taxRateDecimal).toFixed(2);
+//
+//         // Calculate the new total_amount as the sum of newSalesTax and newSubtotal
+//         const newTotalAmount = (parseFloat(newSalesTax) + parseFloat(newSubtotal)).toFixed(2);
+//
+//         // Update the sales_orders table with the new sales_tax and total_amount
+//         await salesOrder.update({
+//             sales_tax: newSalesTax,
+//             total_amount: newTotalAmount,
+//         });
+//
+//         // Handle inventory updates if it's an inventory item
+//         const inventoryItem = await models.inventory_items.findOne({
+//             where: {
+//                 tenant_id: newItemData.tenant_id,
+//                 id: newItemData.inv_item_id,
+//                 inventory_item: true, // Check if it's an inventory item
+//             },
+//         });
+//
+//         if (inventoryItem) {
+//             inventoryData = await models.inventories.findOne({
+//                 where: {
+//                     tenant_id: newItemData.tenant_id,
+//                     item_id: newItemData.inv_item_id,
+//                     warehouse_id: newItemData.wh_id,
+//                 },
+//             });
+//
+//             // Calculate the updated available and committed quantities without stock availability check
+//             const updatedAvailableQuantity = (inventoryData.available || 0) - newItemData.quantity;
+//             const updatedCommittedQuantity = (inventoryData.committed || 0) + newItemData.quantity;
+//
+//             // Update inventory data
+//             await inventoryData.update({
+//                 available: updatedAvailableQuantity,
+//                 committed: updatedCommittedQuantity,
+//             });
+//         } else {
+//             // Item doesn't exist in inventories, create a new entry with updated available and committed quantities
+//             const newAvailableQuantity = -newItemData.quantity;
+//             const newCommittedQuantity = newItemData.quantity;
+//
+//             inventoryData = await models.inventories.create({
+//                 tenant_id: newItemData.tenant_id,
+//                 item_id: newItemData.inv_item_id,
+//                 warehouse_id: newItemData.wh_id,
+//                 available: newAvailableQuantity,
+//                 committed: newCommittedQuantity,
+//                 in_stock: 0,
+//                 // Other columns as needed
+//             });
+//         }
+//
+//         // Send the entire response back
+//         res.status(200).json({
+//             message: 'Item added to sales order successfully',
+//             data: {
+//                 item: createdItem,
+//                 salesOrder: salesOrder,
+//                 inventoryData: inventoryData,
+//             },
+//         });
+//     } catch (error) {
+//         console.error('Error adding item to sales order:', error);
+//         res.status(500).json({ error: 'Failed to add item to sales order' });
+//     }
+// };
 
 
 
