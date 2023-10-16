@@ -812,7 +812,7 @@ const convertSQToSO = async (req, res) => {
             });
 
             // Create a new item in the sales_order_items table
-            await models.sales_order_items.create({
+            await models.so_items.create({
                 tenant_id,
                 so_id: salesOrder.id, // Assign the sales order ID
                 inv_item_id,
