@@ -966,6 +966,39 @@ const voidSO = async (req, res) => {
 };
 
 
+const releaseSO = async (req, res) => {
+    try {
+        const { tenant_id, so_id } = req.body;
+
+        if (!tenant_id || !so_id) {
+            return res.status(400).json({ message: 'Invalid or empty request body' });
+        }
+
+        // Find the sales order in the database
+        const salesOrder = await models.sales_orders.findOne({
+            where: {
+                id: so_id,
+                tenant_id: tenant_id,
+                status: 'open', // Check if the status is 'open'
+            },
+        });
+
+        if (!salesOrder) {
+            return res.status(404).json({ message: `Sales order not found or not open for Tenant ID ${tenant_id} and Sales Order ID ${so_id}` });
+        }
+
+        // Update the released column to true
+        await salesOrder.update({ released: true });
+
+        return res.status(200).json({ message: 'Sales order released successfully' });
+    } catch (error) {
+        console.error('Error releasing sales order:', error);
+        return res.status(500).json({ message: 'Error releasing sales order' });
+    }
+};
+
+module.exports = releaseSO;
+
 
 
 
@@ -981,5 +1014,6 @@ module.exports = {
     addItemToSalesOrder,
     convertSQToSO,
     deleteSOItemAndUpdate,
-    voidSO
+    voidSO,
+    releaseSO
 }
