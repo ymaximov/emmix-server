@@ -685,7 +685,7 @@ const deleteSOItemAndUpdate = async (req, res) => {
         const item_id = req.query.item_id;
 
         // Find the sales order item by tenant_id and ID
-        const salesOrderItem = await models.sales_order_items.findOne({
+        const salesOrderItem = await models.so_items.findOne({
             where: { tenant_id, id: item_id },
         });
 
@@ -733,7 +733,7 @@ const deleteSOItemAndUpdate = async (req, res) => {
         await salesOrderItem.destroy();
 
         // Find all sales order items associated with the same so_id (sales order)
-        const relatedItems = await models.sales_order_items.findAll({
+        const relatedItems = await models.so_items.findAll({
             where: { so_id: salesOrderItem.so_id },
         });
 
