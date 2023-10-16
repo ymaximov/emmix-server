@@ -43,6 +43,10 @@ module.exports = (sequelize, DataTypes) => {
                 type: DataTypes.INTEGER,
                 allowNull: false,
             },
+            received_qty: {
+                type: DataTypes.INTEGER,
+                allowNull: true,
+            },
             unit_price: {
                 type: DataTypes.DECIMAL(10, 2),
                 allowNull: false,

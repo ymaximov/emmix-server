@@ -1308,10 +1308,21 @@ const updateReceivedQuanitiy = async(req, res) => {
 const voidPO = async (req, res) => {
     try {
         const { warehouse_id, tenant_id, items, purchaseOrderId } = req.body;
-        console.log(req.body, 'REQ BODY')
 
         if (!warehouse_id || !tenant_id || !purchaseOrderId) {
             return res.status(400).json({ message: 'Invalid or empty request body' });
+        }
+
+        // Check if there are any goods receipts created for the provided purchase order ID
+        const goodsReceiptsForPurchaseOrder = await models.goods_receipts.findOne({
+            where: {
+                po_id: purchaseOrderId,
+                tenant_id,
+            },
+        });
+
+        if (goodsReceiptsForPurchaseOrder) {
+            return res.status(400).json({ message: 'Cannot void the purchase order as there are goods receipts created against it.' });
         }
 
         // Check if items is an empty array
@@ -1388,7 +1399,6 @@ const voidPO = async (req, res) => {
 
                 // Save the updated inventory item
                 asyncOperations.push(inventoryItem.save());
-                console.log('SAVED');
             }
         }
 
@@ -1402,7 +1412,7 @@ const voidPO = async (req, res) => {
                 tenant_id,
             },
         });
-        console.log('PO UPDATED')
+
         if (!purchaseOrderToUpdate) {
             return res.status(404).json({ message: `Purchase order with ID ${purchaseOrderId} and Tenant ID ${tenant_id} not found.` });
         }
@@ -1419,6 +1429,122 @@ const voidPO = async (req, res) => {
         return res.status(500).json({ message: 'Error updating inventory ordered and voiding purchase order' });
     }
 };
+
+
+// const voidPO = async (req, res) => {
+//     try {
+//         const { warehouse_id, tenant_id, items, purchaseOrderId } = req.body;
+//         console.log(req.body, 'REQ BODY')
+//
+//         if (!warehouse_id || !tenant_id || !purchaseOrderId) {
+//             return res.status(400).json({ message: 'Invalid or empty request body' });
+//         }
+//
+//         // Check if items is an empty array
+//         if (items.length === 0) {
+//             // Update the purchase order status to "void" in the purchase_orders table
+//             const purchaseOrderToUpdate = await models.purchase_orders.findOne({
+//                 where: {
+//                     id: purchaseOrderId,
+//                     tenant_id,
+//                 },
+//             });
+//
+//             if (!purchaseOrderToUpdate) {
+//                 return res.status(404).json({ message: `Purchase order with ID ${purchaseOrderId} and Tenant ID ${tenant_id} not found.` });
+//             }
+//
+//             // Update the status to "void" (assuming "void" is an enum value)
+//             purchaseOrderToUpdate.status = 'void';
+//
+//             // Save the updated purchase order
+//             await purchaseOrderToUpdate.save();
+//
+//             return res.status(200).json({ message: 'Purchase Order Has Been Voided' });
+//         }
+//
+//         // If there are items in the array, proceed with processing them
+//
+//         // Create an array to store promises for async operations
+//         const asyncOperations = [];
+//
+//         // Iterate through the items and update the ordered column for each item
+//         for (const itemToUpdate of items) {
+//             const { inv_item_id, quantity } = itemToUpdate;
+//
+//             // Check if the item is marked as an inventory item in the inventory_items table
+//             const isInventoryItem = await models.inventory_items.findOne({
+//                 where: {
+//                     id: inv_item_id,
+//                 },
+//             });
+//
+//             if (!isInventoryItem) {
+//                 return res.status(404).json({ message: `Inventory item with ID ${inv_item_id} not found.` });
+//             }
+//
+//             if (isInventoryItem.inventory_item) {
+//                 // Find the corresponding item in the inventories table
+//                 const inventoryItem = await models.inventories.findOne({
+//                     where: {
+//                         item_id: inv_item_id,
+//                         warehouse_id,
+//                         tenant_id,
+//                     },
+//                 });
+//
+//                 if (!inventoryItem) {
+//                     return res.status(404).json({ message: `Inventory item with Item ID ${inv_item_id}, Warehouse ID ${warehouse_id}, and Tenant ID ${tenant_id} not found.` });
+//                 }
+//
+//                 // Update the ordered column by subtracting the quantity from the purchase_order_items table
+//                 const purchaseOrderItem = await models.purchase_order_items.findOne({
+//                     where: {
+//                         po_id: purchaseOrderId,
+//                         inv_item_id,
+//                     },
+//                 });
+//
+//                 if (!purchaseOrderItem) {
+//                     return res.status(404).json({ message: `Purchase order item with Item ID ${inv_item_id} and Purchase Order ID ${purchaseOrderId} not found.` });
+//                 }
+//
+//                 // Subtract the quantity from the ordered column
+//                 inventoryItem.ordered -= purchaseOrderItem.quantity;
+//
+//                 // Save the updated inventory item
+//                 asyncOperations.push(inventoryItem.save());
+//                 console.log('SAVED');
+//             }
+//         }
+//
+//         // Wait for all inventory updates to complete
+//         await Promise.all(asyncOperations);
+//
+//         // Update the purchase order status to "void" in the purchase_orders table
+//         const purchaseOrderToUpdate = await models.purchase_orders.findOne({
+//             where: {
+//                 id: purchaseOrderId,
+//                 tenant_id,
+//             },
+//         });
+//         console.log('PO UPDATED')
+//         if (!purchaseOrderToUpdate) {
+//             return res.status(404).json({ message: `Purchase order with ID ${purchaseOrderId} and Tenant ID ${tenant_id} not found.` });
+//         }
+//
+//         // Update the status to "void" (assuming "void" is an enum value)
+//         purchaseOrderToUpdate.status = 'void';
+//
+//         // Save the updated purchase order
+//         await purchaseOrderToUpdate.save();
+//
+//         return res.status(200).json({ message: 'Purchase Order Has Been Voided' });
+//     } catch (error) {
+//         console.error('Error updating inventory ordered and voiding purchase order:', error);
+//         return res.status(500).json({ message: 'Error updating inventory ordered and voiding purchase order' });
+//     }
+// };
 
 
 
