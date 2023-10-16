@@ -818,74 +818,172 @@ const updateDeliveredQuantity = async (req, res) => {
 
 
 // correct1
-const partialDelivery = async (req, res) => {
-    try {
-        // Get the delivery ID from the request
-        const { delivery_id } = req.body;
+// const partialDelivery = async (req, res) => {
+//     try {
+//         // Get the delivery ID from the request
+//         const { delivery_id } = req.body;
+//
+//         // Find the delivery to get the associated sales order ID (so_id)
+//         const delivery = await models.deliveries.findByPk(delivery_id);
+//
+//         if (!delivery) {
+//             return res.status(404).json({ message: 'Delivery not found' });
+//         }
+//
+//         // Get the associated sales order ID
+//         const salesOrderId = delivery.so_id;
+//
+//         // Find all delivery items for the specified sales order
+//         const deliveryItems = await models.delivery_items.findAll({
+//             where: {
+//                 so_id: salesOrderId,
+//             },
+//         });
+//
+//         // Update remaining_quantity for each delivery item
+//         const updateDeliveredQuantities = async (deliveryItems, salesOrderId) => {
+//             for (const deliveryItem of deliveryItems) {
+//                 // Calculate the sum of delivered_quantity for this delivery item
+//                 const deliveredQuantitySum = deliveryItems
+//                     .filter((item) => item.inv_item_id === deliveryItem.inv_item_id)
+//                     .reduce((sum, item) => sum + item.delivered_quantity, 0);
+//
+//                 // Calculate the updated remaining_quantity
+//                 const remainingQuantity = deliveryItem.so_quantity - deliveredQuantitySum;
+//
+//                 // Update the remaining_quantity in the database for this delivery item
+//                 await deliveryItem.update({ remaining_quantity: remainingQuantity });
+//
+//                 // Find the corresponding sales_order_items entry for this item
+//                 const salesOrderItem = await models.so_items.findOne({
+//                     where: {
+//                         so_id: salesOrderId,
+//                         inv_item_id: deliveryItem.inv_item_id,
+//                     },
+//                 });
+//
+//                 if (salesOrderItem) {
+//                     // Update the delivered_qty in the sales_order_items table
+//                     await salesOrderItem.update({ delivered_qty: deliveredQuantitySum });
+//
+//                     // Check if the sales order item should be closed
+//                     if (salesOrderItem.quantity === deliveredQuantitySum) {
+//                         // Update the status column on the sales_order_items table to closed
+//                         await salesOrderItem.update({ status: 'closed' });
+//                     }
+//                 }
+//             }
+//         };
+//
+//         await updateDeliveredQuantities(deliveryItems, salesOrderId);
+//
+//         // Update the status column on the deliveries table to closed
+//         await delivery.update({ status: 'closed' });
+//
+//         res.status(200).json({ message: 'Remaining quantities updated successfully' });
+//     } catch (error) {
+//         console.error('Error updating remaining quantities:', error);
+//         res.status(500).json({ message: 'Error updating remaining quantities' });
+//     }
+// };
 
-        // Find the delivery to get the associated sales order ID (so_id)
-        const delivery = await models.deliveries.findByPk(delivery_id);
+const delivery = async (req, res) => {
+    try {
+        // Get the delivery ID and tenant ID from the request body
+        const { delivery_id, tenant_id } = req.body;
+
+        // Find the delivery to get the associated sales order ID (so_id) and warehouse ID (wh_id)
+        const delivery = await models.deliveries.findOne({
+            where: {
+                id: delivery_id,
+                tenant_id: tenant_id,
+            },
+        });
 
         if (!delivery) {
             return res.status(404).json({ message: 'Delivery not found' });
         }
 
-        // Get the associated sales order ID
+        // Check if the delivery is already closed
+        if (delivery.status === 'closed') {
+            return res.status(400).json({ message: 'Delivery is already closed' });
+        }
+
+        // Get the associated sales order ID and warehouse ID
         const salesOrderId = delivery.so_id;
+        const warehouseId = delivery.wh_id;
 
         // Find all delivery items for the specified sales order
         const deliveryItems = await models.delivery_items.findAll({
             where: {
                 so_id: salesOrderId,
+                tenant_id: tenant_id,
             },
         });
 
-        // Update remaining_quantity for each delivery item
-        const updateDeliveredQuantities = async (deliveryItems, salesOrderId) => {
-            for (const deliveryItem of deliveryItems) {
-                // Calculate the sum of delivered_quantity for this delivery item
-                const deliveredQuantitySum = deliveryItems
-                    .filter((item) => item.inv_item_id === deliveryItem.inv_item_id)
-                    .reduce((sum, item) => sum + item.delivered_quantity, 0);
+        for (const deliveryItem of deliveryItems) {
+            // Calculate the sum of delivered_quantity for this delivery item
+            const deliveredQuantitySum = deliveryItems
+                .filter((item) => item.inv_item_id === deliveryItem.inv_item_id)
+                .reduce((sum, item) => sum + item.delivered_quantity, 0);
 
-                // Calculate the updated remaining_quantity
-                const remainingQuantity = deliveryItem.so_quantity - deliveredQuantitySum;
+            // Calculate the updated remaining_quantity
+            const remainingQuantity = deliveryItem.so_quantity - deliveredQuantitySum;
 
-                // Update the remaining_quantity in the database for this delivery item
-                await deliveryItem.update({ remaining_quantity: remainingQuantity });
+            // Update the remaining_quantity in the database for this delivery item
+            await deliveryItem.update({ remaining_quantity: remainingQuantity });
 
-                // Find the corresponding sales_order_items entry for this item
-                const salesOrderItem = await models.so_items.findOne({
-                    where: {
-                        so_id: salesOrderId,
-                        inv_item_id: deliveryItem.inv_item_id,
-                    },
-                });
+            // Find the corresponding sales_order_items entry for this item
+            const salesOrderItem = await models.so_items.findOne({
+                where: {
+                    so_id: salesOrderId,
+                    inv_item_id: deliveryItem.inv_item_id,
+                    tenant_id: tenant_id,
+                },
+            });
 
-                if (salesOrderItem) {
-                    // Update the delivered_qty in the sales_order_items table
-                    await salesOrderItem.update({ delivered_qty: deliveredQuantitySum });
-
-                    // Check if the sales order item should be closed
-                    if (salesOrderItem.quantity === deliveredQuantitySum) {
-                        // Update the status column on the sales_order_items table to closed
-                        await salesOrderItem.update({ status: 'closed' });
-                    }
-                }
+            if (salesOrderItem) {
+                // Update the delivered_qty in the sales_order_items table
+                await salesOrderItem.update({ delivered_qty: deliveredQuantitySum, status: 'closed' });
             }
-        };
 
-        await updateDeliveredQuantities(deliveryItems, salesOrderId);
+            // Update the inventories table
+            const inventoryItem = await models.inventories.findOne({
+                where: {
+                    tenant_id: tenant_id,
+                    item_id: deliveryItem.inv_item_id,
+                    warehouse_id: warehouseId,
+                },
+            });
+
+            if (inventoryItem) {
+                const currentCommittedQuantity = inventoryItem.committed || 0;
+                const currentAvailableQuantity = inventoryItem.available || 0;
+                const currentInStockQuantity = inventoryItem.in_stock || 0;
+
+                // Update the committed, available, and in_stock columns
+                const updatedCommittedQuantity = currentCommittedQuantity - deliveryItem.so_quantity;
+                const updatedAvailableQuantity = currentAvailableQuantity + (deliveryItem.so_quantity - deliveredQuantitySum);
+                const updatedInStockQuantity = currentInStockQuantity - deliveredQuantitySum;
+
+                await inventoryItem.update({
+                    committed: updatedCommittedQuantity,
+                    available: updatedAvailableQuantity,
+                    in_stock: updatedInStockQuantity,
+                });
+            }
+        }
 
         // Update the status column on the deliveries table to closed
         await delivery.update({ status: 'closed' });
 
-        res.status(200).json({ message: 'Remaining quantities updated successfully' });
+        res.status(200).json({ message: 'Remaining quantities, inventory items, and sales order items updated successfully' });
     } catch (error) {
-        console.error('Error updating remaining quantities:', error);
-        res.status(500).json({ message: 'Error updating remaining quantities' });
+        console.error('Error updating remaining quantities, inventory items, and sales order items:', error);
+        res.status(500).json({ message: 'Error updating remaining quantities, inventory items, and sales order items' });
     }
 };
+
 
 
 
@@ -909,5 +1007,6 @@ module.exports = {
     updateInventoryForGoodsReceipt,
     getDeliveryById,
     updateDeliveredQuantity,
-    partialDelivery
+    delivery
+    // partialDelivery
 }
