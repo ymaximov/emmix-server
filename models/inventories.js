@@ -15,6 +15,7 @@ module.exports = (sequelize, DataTypes) => {
             Inventory.belongsTo(models.tenants, { foreignKey: 'tenant_id' })
             Inventory.belongsTo(models.inventory_items, { foreignKey: 'item_id' })
             Inventory.belongsTo(models.warehouses, { foreignKey: 'warehouse_id' })
+            Inventory.hasMany(models.inventory_items, { foreignKey: 'item_id' });
         }
     }
     Inventory.init({

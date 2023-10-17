@@ -27,6 +27,7 @@ module.exports = (sequelize, DataTypes) => {
             InventoryItem.belongsTo(models.item_properties, { foreignKey: 'prop_8' });
             InventoryItem.belongsTo(models.item_properties, { foreignKey: 'prop_9' });
             InventoryItem.belongsTo(models.item_properties, { foreignKey: 'prop_10' });
+            InventoryItem.hasMany(models.inventories, { foreignKey: 'inv_item_id' });
             // Define other associations
         }
     }

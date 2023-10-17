@@ -119,23 +119,61 @@ const addItem = async(req, res, next) => {
     }
 }
 
-const getInventory = async(req, res, next) => {
+const getInventory = async (req, res, next) => {
     const tenant_id = req.params.id;
-    console.log(tenant_id, 'TENANTID')
     try {
         const inventoryItems = await models.inventory_items.findAll({
             where: {
                 tenant_id,
             },
         });
-        console.log(inventoryItems, 'INV ITEMS')
-        res.status(200).send({message: 'Inventory Items have been fetched successfully', data: inventoryItems});
-        console.log('inv data pushed to frontkjnfndksnfj')
+
+        const inventoryItemsWithInventories = [];
+
+        for (const inventoryItem of inventoryItems) {
+            const inventoryData = await models.inventories.findAll({
+                where: {
+                    item_id: inventoryItem.id,
+                    tenant_id
+                },
+            });
+
+            // If you want to include all inventory records, assign them to a property in an array.
+            inventoryItem.dataValues.inventories = inventoryData;
+
+            inventoryItemsWithInventories.push(inventoryItem);
+        }
+
+        res.status(200).send({
+            message: 'Inventory Items with associated inventories have been fetched successfully',
+            data: inventoryItemsWithInventories,
+        });
     } catch (error) {
+        console.error(error);
         res.status(500).json({ message: 'Error fetching Inventory Items' });
-        console.log(error)
     }
-}
+};
+
+
+
+
+// const getInventory = async(req, res, next) => {
+//     const tenant_id = req.params.id;
+//     console.log(tenant_id, 'TENANTID')
+//     try {
+//         const inventoryItems = await models.inventory_items.findAll({
+//             where: {
+//                 tenant_id,
+//             },
+//         });
+//         console.log(inventoryItems, 'INV ITEMS')
+//         res.status(200).send({message: 'Inventory Items have been fetched successfully', data: inventoryItems});
+//         console.log('inv data pushed to frontkjnfndksnfj')
+//     } catch (error) {
+//         res.status(500).json({ message: 'Error fetching Inventory Items' });
+//         console.log(error)
+//     }
+// }
 
 
 
@@ -203,6 +241,7 @@ const getStockData = async (req, res) => {
 const updateInventoryForGoodsReceipt = async (req, res) => {
     try {
         const { goodsReceiptId, warehouseId, tenant_id } = req.body;
+        console.log(req.body, 'REQ BODY!')
 
         // Find the goods receipt to get the associated po_id
         const goodsReceipt = await models.goods_receipts.findOne({
