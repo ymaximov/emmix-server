@@ -895,7 +895,7 @@ const voidSO = async (req, res) => {
             return res.status(400).json({ message: 'Cannot void the sales order as there are deliveries created for it.' });
         }
 
-        // Get all sales order items associated with the provided sales order ID
+        // Find all sales order items associated with the provided sales order ID
         const salesOrderItems = await models.so_items.findAll({
             where: {
                 so_id,
@@ -911,7 +911,7 @@ const voidSO = async (req, res) => {
         const asyncOperations = [];
 
         for (const salesOrderItem of salesOrderItems) {
-            const { inv_item_id, quantity, wh_id } = salesOrderItem;
+            const { id: so_item_id, inv_item_id, quantity, wh_id } = salesOrderItem;
 
             // Check if the item is marked as an inventory item in the inventory_items table
             const inventoryItem = await models.inventory_items.findOne({
@@ -947,9 +947,15 @@ const voidSO = async (req, res) => {
                     asyncOperations.push(inventoryData.save());
                 }
             }
+
+            // Change the status of the sales_order_item to "closed"
+            asyncOperations.push(models.so_items.update(
+                { status: 'closed' },
+                { where: { id: so_item_id } }
+            ));
         }
 
-        // Wait for all inventory updates to complete
+        // Wait for all inventory updates and sales_order_items status updates to complete
         await Promise.all(asyncOperations);
 
         // Update the sales order status to "void"
@@ -977,6 +983,7 @@ const voidSO = async (req, res) => {
     }
 };
 
+
 // const voidSO = async (req, res) => {
 //     try {
 //         const { tenant_id, so_id } = req.body;
@@ -985,11 +992,23 @@ const voidSO = async (req, res) => {
 //             return res.status(400).json({ message: 'Invalid or empty request body' });
 //         }
 //
+//         // Check if there are any deliveries created for the provided sales order ID
+//         const deliveriesForSalesOrder = await models.deliveries.findOne({
+//             where: {
+//                 so_id,
+//                 tenant_id,
+//             },
+//         });
+//
+//         if (deliveriesForSalesOrder) {
+//             return res.status(400).json({ message: 'Cannot void the sales order as there are deliveries created for it.' });
+//         }
+//
 //         // Get all sales order items associated with the provided sales order ID
 //         const salesOrderItems = await models.so_items.findAll({
 //             where: {
 //                 so_id,
-//                 tenant_id
+//                 tenant_id,
 //             },
 //         });
 //
@@ -1066,6 +1085,8 @@ const voidSO = async (req, res) => {
 //         return res.status(500).json({ message: 'Error updating inventory and voiding sales order' });
 //     }
 // };
+
+
 
 
 const releaseSO = async (req, res) => {
