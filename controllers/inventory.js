@@ -134,18 +134,31 @@ const getInventory = async (req, res, next) => {
             const inventoryData = await models.inventories.findAll({
                 where: {
                     item_id: inventoryItem.id,
-                    tenant_id
                 },
             });
 
-            // If you want to include all inventory records, assign them to a property in an array.
-            inventoryItem.dataValues.inventories = inventoryData;
+            // Calculate the total sum of in_stock and available for each item_id
+            let totalInStock = 0;
+            let totalAvailable = 0;
 
-            inventoryItemsWithInventories.push(inventoryItem);
+            for (const inventoryRecord of inventoryData) {
+                totalInStock += inventoryRecord.in_stock || 0;
+                totalAvailable += inventoryRecord.available || 0;
+            }
+
+            // Include the calculated totals in the response
+            const itemWithInventory = {
+                ...inventoryItem.dataValues,
+                inventories: inventoryData,
+                totalInStock,
+                totalAvailable,
+            };
+
+            inventoryItemsWithInventories.push(itemWithInventory);
         }
 
         res.status(200).send({
-            message: 'Inventory Items with associated inventories have been fetched successfully',
+            message: 'Inventory Items with associated inventories and totals have been fetched successfully',
             data: inventoryItemsWithInventories,
         });
     } catch (error) {
@@ -155,25 +168,44 @@ const getInventory = async (req, res, next) => {
 };
 
 
-
-
-// const getInventory = async(req, res, next) => {
+// const getInventory = async (req, res, next) => {
 //     const tenant_id = req.params.id;
-//     console.log(tenant_id, 'TENANTID')
 //     try {
 //         const inventoryItems = await models.inventory_items.findAll({
 //             where: {
 //                 tenant_id,
 //             },
 //         });
-//         console.log(inventoryItems, 'INV ITEMS')
-//         res.status(200).send({message: 'Inventory Items have been fetched successfully', data: inventoryItems});
-//         console.log('inv data pushed to frontkjnfndksnfj')
+//
+//         const inventoryItemsWithInventories = [];
+//
+//         for (const inventoryItem of inventoryItems) {
+//             const inventoryData = await models.inventories.findAll({
+//                 where: {
+//                     item_id: inventoryItem.id,
+//                     tenant_id
+//                 },
+//             });
+//
+//             // If you want to include all inventory records, assign them to a property in an array.
+//             inventoryItem.dataValues.inventories = inventoryData;
+//
+//             inventoryItemsWithInventories.push(inventoryItem);
+//         }
+//
+//         res.status(200).send({
+//             message: 'Inventory Items with associated inventories have been fetched successfully',
+//             data: inventoryItemsWithInventories,
+//         });
 //     } catch (error) {
+//         console.error(error);
 //         res.status(500).json({ message: 'Error fetching Inventory Items' });
-//         console.log(error)
 //     }
-// }
+// };
+
+
+
+
 
 
 
