@@ -903,8 +903,26 @@ const voidSO = async (req, res) => {
             },
         });
 
+        // If there are no sales order items, change the status of the sales order to "void"
         if (!salesOrderItems || salesOrderItems.length === 0) {
-            return res.status(404).json({ message: `No sales order items found for Sales Order ID ${so_id}` });
+            const salesOrderToUpdate = await models.sales_orders.findOne({
+                where: {
+                    id: so_id,
+                    tenant_id,
+                },
+            });
+
+            if (!salesOrderToUpdate) {
+                return res.status(404).json({ message: `Sales Order with ID ${so_id} and Tenant ID ${tenant_id} not found.` });
+            }
+
+            // Update the status to "void" (assuming "void" is an enum value)
+            salesOrderToUpdate.status = 'void';
+
+            // Save the updated sales order
+            await salesOrderToUpdate.save();
+
+            return res.status(200).json({ message: 'Sales Order Has Been Voided' });
         }
 
         // Create an array to store promises for async operations
@@ -955,7 +973,7 @@ const voidSO = async (req, res) => {
             ));
         }
 
-        // Wait for all inventory updates and sales_order_items status updates to complete
+        // Wait for all sales order items status updates to complete
         await Promise.all(asyncOperations);
 
         // Update the sales order status to "void"
@@ -982,6 +1000,8 @@ const voidSO = async (req, res) => {
         return res.status(500).json({ message: 'Error updating inventory and voiding sales order' });
     }
 };
+
+
 
 
 // const voidSO = async (req, res) => {
