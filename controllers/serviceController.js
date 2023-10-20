@@ -20,12 +20,31 @@ const createEquipmentCard = async(req, res) => {
 
 }
 
+const  createServiceContract = async(req, res) => {
+    try{
+        console.log(req.body, 'Req body')
+        const createdServiceContract = await models.service_contracts.create(req.body)
+
+        const id = createdServiceContract.id
+        console.log(id, 'EC ID')
+
+        res.status(200).json({ message: 'Service Contract created successfully', data: id, success: true });
+
+    } catch (error) {
+        console.error('Error creating service contract:', error);
+        console.log(error, 'ERROR')
+        res.status(500).json({ error: 'Please fill out all required data' });
+    }
+
+}
+
 const getECDataByECID = async (req, res, next) => {
-    const ec_id = req.params.id; // Assuming you have a route parameter for po_id
-    console.log(ec_id, 'Ec_ID');
+    const ec_id = req.params.id; // Assuming you have a route parameter for ec_id
+    console.log(ec_id, 'ec_ID');
+    console.log(req.params, 'req params');
 
     try {
-        // Fetch the specific purchase order based on id and include vendor and warehouse details
+        // Fetch the specific equipment card based on id and include vendor and warehouse details
         const equipmentCard = await models.equipment_cards.findOne({
             where: {
                 id: ec_id,
@@ -36,11 +55,8 @@ const getECDataByECID = async (req, res, next) => {
                     // as: 'vendors', // Alias for the included vendor details
                 },
                 {
-                    model: models.users,
+                    model: models.inventory_items,
                 },
-                {
-                    model: models.inventory_items
-                }
             ],
         });
 
@@ -48,17 +64,77 @@ const getECDataByECID = async (req, res, next) => {
             return res.status(404).json({ message: 'Equipment Card not found' });
         }
 
-        res.status(200).send({
-            message: 'Equipment Card have been fetched successfully',
-            equipmentCard,
-        });
+        let technician = null;
+        // Check if the technician_id is not null before fetching technician data
+        if (equipmentCard.technician_id !== null) {
+            technician = await models.users.findOne({
+                where: {
+                    id: equipmentCard.technician_id, // Assuming 'technician_id' is the foreign key in equipment_cards
+                },
+            });
+
+            if (!technician) {
+                return res.status(404).json({ message: 'Technician not found' });
+            }
+        }
+
+        // Combine equipmentCard and technician data
+        const responseData = {
+            message: 'Equipment Card has been fetched successfully',
+            equipmentCard: equipmentCard,
+            technician: technician,
+        };
+
+        res.status(200).json(responseData);
         console.log('Data pushed to front');
     } catch (error) {
         res.status(500).json({ message: 'Error fetching Equipment Card' });
         console.error(error, 'ERROR');
     }
 };
-const updateEquipmentCard = async(req, res, next) => {
+
+const getSCDataBySCID = async (req, res, next) => {
+    const sc_id = req.params.id; // Assuming you have a route parameter for ec_id
+    console.log(sc_id, 'ec_ID');
+    console.log(req.params, 'req params');
+
+    try {
+        // Fetch the specific equipment card based on id and include vendor and warehouse details
+        const serviceContract = await models.service_contracts.findOne({
+            where: {
+                id: sc_id,
+            },
+            include: [
+                {
+                    model: models.customers,
+                    // as: 'vendors', // Alias for the included vendor details
+                },
+                {
+                    model: models.users,
+                },
+            ],
+        });
+
+        if (!serviceContract) {
+            return res.status(404).json({ message: 'Service Contract not found' });
+        }
+
+
+        // Combine equipmentCard and technician data
+        const responseData = {
+            message: 'Service Contract has been fetched successfully',
+            serviceContract: serviceContract,
+        };
+
+        res.status(200).json(responseData);
+        console.log('Data pushed to front');
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching Equipment Card' });
+        console.error(error, 'ERROR');
+    }
+};
+
+const updateEquipmentCard = async (req, res, next) => {
     try {
         const data = req.body;
         console.log('***REQUEST BODY****', data);
@@ -66,24 +142,124 @@ const updateEquipmentCard = async(req, res, next) => {
         const options = {
             where: {
                 id: data.id,
-                tenant_id: data.tenant_id
+                tenant_id: data.tenant_id,
             },
+        };
+        const equipmentCard = await models.equipment_cards.findOne(options);
+
+        if (!equipmentCard) {
+            return res.status(404).send({ message: 'Equipment Card not found', success: false });
         }
-        const equipmentCard = await models.equipment_cards.findOne(options)
 
+        // Check if the inv_item_id, technician_id, and delivery_id are associated with the same tenant_id
+        const inventoryItem = await models.inventory_items.findOne({
+            where: {
+                id: data.inv_item_id,
+                tenant_id: data.tenant_id
+            }
+        });
 
-        const updateCustomer = await equipmentCard.update(data);
-        res.status(200).send({message: 'Equipment Card updated successfully', success: true})
-        console.log('Equipment Card has been updated')
+        const technician = await models.users.findOne({
+            where: {
+                id: data.technician_id,
+                tenant_id: data.tenant_id
+            }
+        });
 
+        const delivery = await models.deliveries.findOne({
+            where: {
+                id: data.delivery_id,
+                tenant_id: data.tenant_id
+            }
+        });
+
+        if (
+            (!inventoryItem && data.inv_item_id !== null) ||
+            (!technician && data.technician_id !== null) ||
+            (!delivery && data.delivery_id !== null)
+        ) {
+            return res.status(403).send({ message: 'Invalid inv_item_id, technician_id, delivery_id, or tenant_id', success: false });
+        }
+
+        const updateData = {
+            status: data.status,
+            mfr_serial: data.mfr_serial,
+            serial_no: data.serial_no,
+            delivery_id: data.delivery_id,
+            inv_item_id: data.inv_item_id,
+            technician_id: data.technician_id,
+        };
+
+        const updateCustomer = await equipmentCard.update(updateData);
+        res.status(200).send({ message: 'Equipment Card updated successfully', success: true });
+        console.log('Equipment Card has been updated');
     } catch (error) {
-        res.status(500).send({message: 'Error updating equipment card', success: false, error});
-        console.log('***ERROR***', error)
+        res.status(500).send({ message: 'Error updating equipment card', success: false, error });
+        console.error('***ERROR***', error);
     }
-}
+};
+
+
+
+// const updateEquipmentCard = async (req, res, next) => {
+//     try {
+//         const data = req.body;
+//         console.log('***REQUEST BODY****', data);
+//
+//         const options = {
+//             where: {
+//                 id: data.id,
+//                 tenant_id: data.tenant_id
+//             },
+//         }
+//         const equipmentCard = await models.equipment_cards.findOne(options)
+//
+//         if (!equipmentCard) {
+//             return res.status(404).send({ message: 'Equipment Card not found', success: false });
+//         }
+//
+//         // Check if the inv_item_id, technician_id, and delivery_id are associated with the same tenant_id
+//         const inventoryItem = await models.inventory_items.findOne({
+//             where: {
+//                 id: data.inv_item_id,
+//                 tenant_id: data.tenant_id
+//             }
+//         });
+//
+//         const technician = await models.users.findOne({
+//             where: {
+//                 id: data.technician_id,
+//                 tenant_id: data.tenant_id
+//             }
+//         });
+//
+//         const delivery = await models.deliveries.findOne({
+//             where: {
+//                 id: data.delivery_id,
+//                 tenant_id: data.tenant_id
+//             }
+//         });
+//
+//         if (!inventoryItem || !technician || !delivery) {
+//             return res.status(403).send({ message: 'Invalid inv_item_id, technician_id, or delivery_id', success: false });
+//         }
+//
+//         const updateCustomer = await equipmentCard.update(data);
+//         res.status(200).send({ message: 'Equipment Card updated successfully', success: true });
+//         console.log('Equipment Card has been updated');
+//
+//     } catch (error) {
+//         res.status(500).send({ message: 'Error updating equipment card', success: false, error });
+//         console.log('***ERROR***', error);
+//     }
+// };
+
+
 
 module.exports = {
     createEquipmentCard,
     getECDataByECID,
-    updateEquipmentCard
+    updateEquipmentCard,
+    createServiceContract,
+    getSCDataBySCID
 }

@@ -5,7 +5,9 @@ const serviceController = require('../controllers/serviceController')
 const salesController = require("../controllers/sales");
 
 router.post('/create-equipment-card', auth, serviceController.createEquipmentCard)
+router.post('/create-service-contract', auth, serviceController.createServiceContract)
 router.get('/get-ec-data-by-id/:id', auth, serviceController.getECDataByECID)
+router.get('/get-sc-data-by-id/:id', auth, serviceController.getSCDataBySCID)
 router.put('/update-ec', auth, serviceController.updateEquipmentCard)
 
 module.exports = router
