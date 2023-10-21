@@ -58,26 +58,6 @@ const createRepairOrder = async (req, res) => {
 };
 
 
-
-
-// const createRepairOrder = async(req, res) => {
-//     try{
-//         console.log(req.body, 'Req body')
-//         const createdRepairOrder = await models.repair_orders.create(req.body)
-//
-//         const id = createdRepairOrder.id
-//         console.log(id, 'RO ID')
-//
-//         res.status(200).json({ message: 'Repair Order created successfully', data: id });
-//
-//     } catch (error) {
-//         console.error('Error creating repair order', error);
-//         console.log(error, 'ERROR')
-//         res.status(500).json({ error: 'Please fill out all required data' });
-//     }
-//
-// }
-
 const  createServiceContract = async(req, res) => {
     try{
         console.log(req.body, 'Req body')
@@ -199,14 +179,13 @@ const getSCDataBySCID = async (req, res, next) => {
         console.error(error, 'ERROR');
     }
 };
-
 const getRODataByROID = async (req, res, next) => {
-    const ro_id = req.params.id; // Assuming you have a route parameter for ec_id
+    const ro_id = req.params.id; // Assuming you have a route parameter for ro_id
     console.log(ro_id, 'RO_ID');
     console.log(req.params, 'req params');
 
     try {
-        // Fetch the specific equipment card based on id and include vendor and warehouse details
+        // Fetch the specific repair order based on id and include customer and user details
         const repairOrder = await models.repair_orders.findOne({
             where: {
                 id: ro_id,
@@ -214,7 +193,6 @@ const getRODataByROID = async (req, res, next) => {
             include: [
                 {
                     model: models.customers,
-                    // as: 'vendors', // Alias for the included vendor details
                 },
                 {
                     model: models.users,
@@ -234,20 +212,98 @@ const getRODataByROID = async (req, res, next) => {
             return res.status(404).json({ message: 'Repair order not found' });
         }
 
+        // Search for relevant service contracts and include user data
+        const contractData = await models.service_contracts.findOne({
+            where: {
+                contract_type: 'repair', // Your enum value for repair
+                tenant_id: repairOrder.tenant_id,
+                status: 'open', // Your enum value for open
+                equipment_id: repairOrder.equipment_id,
+                customer_id: repairOrder.customer_id
+            },
+            include: [
+                {
+                    model: models.users, // Include the user data
+                    as: 'user', // You can use 'as' if there's an alias for this association
+                },
+            ],
+        });
 
-        // Combine equipmentCard and technician data
+        // Combine equipmentCard, technician, and contract data
         const responseData = {
             message: 'Repair Order has been fetched successfully',
             repairOrder,
+            contractData, // Sending the contract data along with the repair order data
         };
 
         res.status(200).json(responseData);
-        console.log('Data pushed to front');
+        console.log('Data pushed to the front');
     } catch (error) {
         res.status(500).json({ message: 'Error fetching Repair Order' });
         console.error(error, 'ERROR');
     }
 };
+
+// const getRODataByROID = async (req, res, next) => {
+//     const ro_id = req.params.id; // Assuming you have a route parameter for ro_id
+//     console.log(ro_id, 'RO_ID');
+//     console.log(req.params, 'req params');
+//
+//     try {
+//         // Fetch the specific repair order based on id and include customer and user details
+//         const repairOrder = await models.repair_orders.findOne({
+//             where: {
+//                 id: ro_id,
+//             },
+//             include: [
+//                 {
+//                     model: models.customers,
+//                 },
+//                 {
+//                     model: models.users,
+//                 },
+//                 {
+//                     model: models.equipment_cards,
+//                     include: [
+//                         {
+//                             model: models.inventory_items, // Include the inventory_items relation within equipment_cards
+//                         },
+//                     ],
+//                 },
+//             ],
+//         });
+//
+//         if (!repairOrder) {
+//             return res.status(404).json({ message: 'Repair order not found' });
+//         }
+//
+//         // Search for relevant service contracts
+//         const contractData = await models.service_contracts.findOne({
+//             where: {
+//                 contract_type: 'repair', // Your enum value for repair
+//                 tenant_id: repairOrder.tenant_id,
+//                 status: 'open', // Your enum value for open
+//                 equipment_id: repairOrder.equipment_id,
+//                 customer_id: repairOrder.customer_id
+//             },
+//         });
+//
+//         // Combine equipmentCard, technician, and contract data
+//         const responseData = {
+//             message: 'Repair Order has been fetched successfully',
+//             repairOrder,
+//             contractData, // Sending the contract data along with the repair order data
+//         };
+//
+//         res.status(200).json(responseData);
+//         console.log('Data pushed to the front');
+//     } catch (error) {
+//         res.status(500).json({ message: 'Error fetching Repair Order' });
+//         console.error(error, 'ERROR');
+//     }
+// };
+
+
 
 const updateEquipmentCard = async (req, res, next) => {
     try {
