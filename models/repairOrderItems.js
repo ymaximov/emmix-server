@@ -9,6 +9,7 @@ module.exports = (sequelize, DataTypes) => {
             RepairOrderItems.belongsTo(models.inventory_items, { foreignKey: 'inv_item_id' });
             RepairOrderItems.belongsTo(models.tenants, { foreignKey: 'tenant_id' });
             RepairOrderItems.belongsTo(models.warehouses, { foreignKey: 'wh_id' });
+            RepairOrderItems.belongsTo(models.repair_order_activities, { foreignKey: 'activity_id' });
         }
     }
 
@@ -44,6 +45,14 @@ module.exports = (sequelize, DataTypes) => {
                 allowNull: true,
                 references: {
                     model: 'users',
+                    key: 'id',
+                },
+            },
+            activity_id: {
+                type: DataTypes.INTEGER,
+                allowNull: true,
+                references: {
+                    model: 'repair_order_activities',
                     key: 'id',
                 },
             },
