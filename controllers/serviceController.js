@@ -277,7 +277,8 @@ const updateEquipmentCard = async (req, res, next) => {
         const technician = await models.users.findOne({
             where: {
                 id: data.technician_id,
-                tenant_id: data.tenant_id
+                tenant_id: data.tenant_id,
+                technician: true
             }
         });
 
@@ -368,6 +369,60 @@ const updateServiceContract = async (req, res, next) => {
     }
 };
 
+const updateRepairOrder = async (req, res, next) => {
+    console.log(req.body, 'REQ BODY!!!')
+    try {
+        const data = req.body;
+        console.log('***REQUEST BODY****', data);
+
+        const options = {
+            where: {
+                id: data.id,
+                tenant_id: data.tenant_id,
+            },
+        };
+        const repairOrder = await models.repair_orders.findOne(options);
+
+        if (!repairOrder) {
+            return res.status(404).send({ message: 'Repair Order not found', success: false });
+        }
+
+        // Check if the technician_id exists in the users table for the same tenant
+        if (data.technician_id) {
+            const technician = await models.users.findOne({
+                where: {
+                    id: data.technician_id,
+                    tenant_id: data.tenant_id,
+                    technician: true
+                },
+            });
+
+            if (!technician) {
+                return res.status(403).send({ message: 'Invalid technician_id', success: false });
+            }
+        }
+
+        // Initialize the updateData object with common properties
+        const updateData = {
+            status: data.status,
+            description: data.description,
+            repair_description: data.repair_description,
+            resolution_description: data.resolution_description,
+            technician_id: data.technician_id,
+            contact_person: data.contact_person,
+            phone_1: data.phone_1,
+            mobile_phone: data.mobile_phone,
+            email: data.email,
+        };
+
+        const updateRepairOrder = await repairOrder.update(updateData);
+        res.status(200).send({ message: 'Repair Order updated successfully', success: true });
+    } catch (error) {
+        res.status(500).send({ message: 'Error updating repair order', success: false, error });
+        console.error('***ERROR***', error);
+    }
+};
+
 
 
 // const updateEquipmentCard = async (req, res, next) => {
@@ -433,5 +488,6 @@ module.exports = {
     getSCDataBySCID,
     updateServiceContract,
     createRepairOrder,
-    getRODataByROID
+    getRODataByROID,
+    updateRepairOrder
 }
