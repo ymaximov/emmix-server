@@ -9,5 +9,6 @@ router.post('/create-service-contract', auth, serviceController.createServiceCon
 router.get('/get-ec-data-by-id/:id', auth, serviceController.getECDataByECID)
 router.get('/get-sc-data-by-id/:id', auth, serviceController.getSCDataBySCID)
 router.put('/update-ec', auth, serviceController.updateEquipmentCard)
+router.put('/update-sc', auth, serviceController.updateServiceContract)
 
 module.exports = router

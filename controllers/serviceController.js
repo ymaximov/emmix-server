@@ -112,6 +112,14 @@ const getSCDataBySCID = async (req, res, next) => {
                 {
                     model: models.users,
                 },
+                {
+                    model: models.equipment_cards,
+                    include: [
+                        {
+                            model: models.inventory_items, // Include the inventory_items relation within equipment_cards
+                        },
+                    ],
+                },
             ],
         });
 
@@ -199,6 +207,60 @@ const updateEquipmentCard = async (req, res, next) => {
     }
 };
 
+const updateServiceContract = async (req, res, next) => {
+    try {
+        const data = req.body;
+        console.log('***REQUEST BODY****', data);
+
+        const options = {
+            where: {
+                id: data.id,
+                tenant_id: data.tenant_id,
+            },
+        };
+        const serviceContract = await models.service_contracts.findOne(options);
+
+        if (!serviceContract) {
+            return res.status(404).send({ message: 'Service Contract not found', success: false });
+        }
+
+        // Initialize the updateData object with common properties
+        const updateData = {
+            status: data.status,
+            description: data.description,
+            remarks: data.remarks,
+            response_time: data.response_time,
+            response_time_type: data.response_time_type,
+            resolution_time: data.resolution_time,
+            resolution_time_type: data.resolution_time_type,
+            technician_id: data.technician_id
+        };
+
+        // Check if equipment_id is provided and not null or undefined
+        if (data.equipment_id !== null && data.equipment_id !== undefined) {
+            const equipment = await models.equipment_cards.findOne({
+                where: {
+                    id: data.equipment_id,
+                    tenant_id: data.tenant_id,
+                },
+            });
+
+            if (!equipment) {
+                return res.status(403).send({ message: 'Invalid equipment id', success: false });
+            }
+
+            // If equipment_id is valid, add it to the updateData object
+            updateData.equipment_id = data.equipment_id;
+        }
+
+        const updateCustomer = await serviceContract.update(updateData);
+        res.status(200).send({ message: 'Service Contract updated successfully', success: true });
+    } catch (error) {
+        res.status(500).send({ message: 'Error updating service contract', success: false, error });
+        console.error('***ERROR***', error);
+    }
+};
+
 
 
 // const updateEquipmentCard = async (req, res, next) => {
@@ -261,5 +323,6 @@ module.exports = {
     getECDataByECID,
     updateEquipmentCard,
     createServiceContract,
-    getSCDataBySCID
+    getSCDataBySCID,
+    updateServiceContract
 }

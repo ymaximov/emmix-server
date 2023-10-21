@@ -82,7 +82,7 @@ module.exports = (sequelize, DataTypes) => {
                 defaultValue: 'regular',
             },
             contract_type: {
-                type: DataTypes.ENUM('service', 'equipment'),
+                type: DataTypes.ENUM('service', 'repair'),
                 defaultValue: 'service',
             },
             response_time: {
