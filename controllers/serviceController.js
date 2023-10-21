@@ -20,6 +20,64 @@ const createEquipmentCard = async(req, res) => {
 
 }
 
+const createRepairOrder = async (req, res) => {
+    try {
+        console.log(req.body, 'Req body');
+
+        // Get the 'equipment_id,' 'customer_id,' and 'tenant_id' from the request body
+        const { equipment_id, customer_id, tenant_id, iser_id } = req.body;
+
+        // Find the equipment card
+        const equipmentCard = await models.equipment_cards.findOne({
+            where: { id: equipment_id },
+            attributes: ['customer_id', 'tenant_id'],
+        });
+
+        if (!equipmentCard) {
+            return res.status(404).json({ error: 'Equipment not found' });
+        }
+
+        const { customer_id: equipmentCustomerID, tenant_id: equipmentTenantID } = equipmentCard;
+
+        // Verify if 'equipment_id' belongs to the same 'customer_id' and 'tenant_id'
+        if (equipmentCustomerID !== customer_id || equipmentTenantID !== tenant_id) {
+            return res.status(403).json({ error: 'Equipment does not belong to the specified customer and tenant' });
+        }
+
+        // Create the repair order
+        const createdRepairOrder = await models.repair_orders.create(req.body);
+        const id = createdRepairOrder.id;
+
+        console.log(id, 'RO ID');
+        res.status(200).json({ message: 'Repair Order created successfully', data: id });
+    } catch (error) {
+        console.error('Error creating repair order', error);
+        console.log(error, 'ERROR');
+        res.status(500).json({ error: 'Please fill out all required data' });
+    }
+};
+
+
+
+
+// const createRepairOrder = async(req, res) => {
+//     try{
+//         console.log(req.body, 'Req body')
+//         const createdRepairOrder = await models.repair_orders.create(req.body)
+//
+//         const id = createdRepairOrder.id
+//         console.log(id, 'RO ID')
+//
+//         res.status(200).json({ message: 'Repair Order created successfully', data: id });
+//
+//     } catch (error) {
+//         console.error('Error creating repair order', error);
+//         console.log(error, 'ERROR')
+//         res.status(500).json({ error: 'Please fill out all required data' });
+//     }
+//
+// }
+
 const  createServiceContract = async(req, res) => {
     try{
         console.log(req.body, 'Req body')
@@ -138,6 +196,55 @@ const getSCDataBySCID = async (req, res, next) => {
         console.log('Data pushed to front');
     } catch (error) {
         res.status(500).json({ message: 'Error fetching Equipment Card' });
+        console.error(error, 'ERROR');
+    }
+};
+
+const getRODataByROID = async (req, res, next) => {
+    const ro_id = req.params.id; // Assuming you have a route parameter for ec_id
+    console.log(ro_id, 'RO_ID');
+    console.log(req.params, 'req params');
+
+    try {
+        // Fetch the specific equipment card based on id and include vendor and warehouse details
+        const repairOrder = await models.repair_orders.findOne({
+            where: {
+                id: ro_id,
+            },
+            include: [
+                {
+                    model: models.customers,
+                    // as: 'vendors', // Alias for the included vendor details
+                },
+                {
+                    model: models.users,
+                },
+                {
+                    model: models.equipment_cards,
+                    include: [
+                        {
+                            model: models.inventory_items, // Include the inventory_items relation within equipment_cards
+                        },
+                    ],
+                },
+            ],
+        });
+
+        if (!repairOrder) {
+            return res.status(404).json({ message: 'Repair order not found' });
+        }
+
+
+        // Combine equipmentCard and technician data
+        const responseData = {
+            message: 'Repair Order has been fetched successfully',
+            repairOrder,
+        };
+
+        res.status(200).json(responseData);
+        console.log('Data pushed to front');
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching Repair Order' });
         console.error(error, 'ERROR');
     }
 };
@@ -324,5 +431,7 @@ module.exports = {
     updateEquipmentCard,
     createServiceContract,
     getSCDataBySCID,
-    updateServiceContract
+    updateServiceContract,
+    createRepairOrder,
+    getRODataByROID
 }
