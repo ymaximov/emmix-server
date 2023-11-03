@@ -59,8 +59,30 @@ const createRepairOrder = async (req, res) => {
 
 const createRepairOrderActivity = async (req, res) => {
     try {
-        console.log(req.body, 'REQ BODY!!')
-        const createdRepairOrderActivity = await models.repair_order_activities.create(req.body);
+        const { start_date, start_time, end_date, end_time } = req.body;
+
+        // Calculate duration in hours
+        let duration = 0;
+        if (start_date && start_time) {
+            const startTime = new Date(`${start_date}T${start_time}`);
+            let endTime = null;
+
+            if (end_date && end_time) {
+                endTime = new Date(`${end_date}T${end_time}`);
+            }
+
+            if (endTime) {
+                // Calculate the time difference in milliseconds
+                const timeDiff = endTime - startTime;
+                duration = timeDiff / (1000 * 60 * 60); // Duration in hours
+            }
+        }
+
+        // Insert data from the request body into the 'repair_order_activities' table
+        const createdRepairOrderActivity = await models.repair_order_activities.create({
+            ...req.body,
+            duration: duration.toString(),
+        });
 
         const id = createdRepairOrderActivity.id;
         console.log(id, 'Repair Order Activity ID');
@@ -71,6 +93,7 @@ const createRepairOrderActivity = async (req, res) => {
         res.status(500).json({ error: 'An error occurred while creating the repair order activity' });
     }
 }
+
 
 // Make the 'createRepairOrderActivity' function available for use in your routes
 module.exports = { createRepairOrderActivity };
