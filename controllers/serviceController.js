@@ -95,6 +95,59 @@ const createRepairOrderActivity = async (req, res) => {
     }
 }
 
+const updateRepairOrderActivity = async (req, res) => {
+    const { start_date, start_time, end_date, end_time, status, id, tenant_id } = req.body;
+
+    try {
+        const repairOrderActivity = await models.repair_order_activities.findOne({
+            where: {
+                id,
+                tenant_id
+            },
+        });
+
+        if (!repairOrderActivity) {
+            return res.status(404).json({ message: 'Repair order activity not found' });
+        }
+
+        // Check if the status is not closed
+        if (status !== 'closed') {
+            // Calculate duration in hours and round to 2 decimal points
+            let duration = 0;
+            if (start_date && start_time) {
+                const startTime = new Date(`${start_date}T${start_time}`);
+                let endTime = null;
+
+                if (end_date && end_time) {
+                    endTime = new Date(`${end_date}T${end_time}`);
+                }
+
+                if (endTime) {
+                    // Calculate the time difference in milliseconds
+                    const timeDiff = endTime - startTime;
+                    duration = timeDiff / (1000 * 60 * 60); // Duration in hours
+                    duration = duration.toFixed(2); // Round to 2 decimal points
+                }
+            }
+
+            // Update the repair_order_activities table with the new data
+            const updatedRepairOrderActivity = await repairOrderActivity.update({
+                ...req.body,
+                duration: duration.toString(),
+            });
+
+            console.log('Repair Order Activity updated successfully');
+
+            res.status(200).json({ message: 'Repair Order Activity updated successfully' });
+        } else {
+            // Status is closed, no update required
+            res.status(400).json({ message: 'Update not allowed for closed activities' });
+        }
+    } catch (error) {
+        console.error('Error updating repair order activity:', error);
+        res.status(500).json({ error: 'An error occurred while updating the repair order activity' });
+    }
+};
 
 
 // Make the 'createRepairOrderActivity' function available for use in your routes
@@ -601,5 +654,6 @@ module.exports = {
     createRepairOrder,
     getRODataByROID,
     updateRepairOrder,
-    createRepairOrderActivity
+    createRepairOrderActivity,
+    updateRepairOrderActivity
 }

@@ -14,5 +14,6 @@ router.get('/get-ro-data-by-id/:id', auth, serviceController.getRODataByROID)
 router.put('/update-ec', auth, serviceController.updateEquipmentCard)
 router.put('/update-sc', auth, serviceController.updateServiceContract)
 router.put('/update-ro', auth, serviceController.updateRepairOrder)
+router.put('/update-ro-activity', auth, serviceController.updateRepairOrderActivity)
 
 module.exports = router
