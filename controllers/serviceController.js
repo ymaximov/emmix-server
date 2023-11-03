@@ -61,7 +61,7 @@ const createRepairOrderActivity = async (req, res) => {
     try {
         const { start_date, start_time, end_date, end_time } = req.body;
 
-        // Calculate duration in hours
+        // Calculate duration in hours and round to 2 decimal points
         let duration = 0;
         if (start_date && start_time) {
             const startTime = new Date(`${start_date}T${start_time}`);
@@ -75,6 +75,7 @@ const createRepairOrderActivity = async (req, res) => {
                 // Calculate the time difference in milliseconds
                 const timeDiff = endTime - startTime;
                 duration = timeDiff / (1000 * 60 * 60); // Duration in hours
+                duration = duration.toFixed(2); // Round to 2 decimal points
             }
         }
 
@@ -93,6 +94,7 @@ const createRepairOrderActivity = async (req, res) => {
         res.status(500).json({ error: 'An error occurred while creating the repair order activity' });
     }
 }
+
 
 
 // Make the 'createRepairOrderActivity' function available for use in your routes
@@ -221,8 +223,6 @@ const getSCDataBySCID = async (req, res, next) => {
 };
 const getRODataByROID = async (req, res, next) => {
     const ro_id = req.params.id; // Assuming you have a route parameter for ro_id
-    console.log(ro_id, 'RO_ID');
-    console.log(req.params, 'req params');
 
     try {
         // Fetch the specific repair order based on id and include customer and user details
@@ -245,6 +245,14 @@ const getRODataByROID = async (req, res, next) => {
                         },
                     ],
                 },
+                {
+                    model: models.repair_order_activities,
+                    include: [
+                        {
+                            model: models.users,
+                        },
+                    ],// Include the repair order activities
+                },
             ],
         });
 
@@ -259,7 +267,7 @@ const getRODataByROID = async (req, res, next) => {
                 tenant_id: repairOrder.tenant_id,
                 status: 'open', // Your enum value for open
                 equipment_id: repairOrder.equipment_id,
-                customer_id: repairOrder.customer_id
+                customer_id: repairOrder.customer_id,
             },
             include: [
                 {
@@ -317,7 +325,7 @@ const getRODataByROID = async (req, res, next) => {
 //             return res.status(404).json({ message: 'Repair order not found' });
 //         }
 //
-//         // Search for relevant service contracts
+//         // Search for relevant service contracts and include user data
 //         const contractData = await models.service_contracts.findOne({
 //             where: {
 //                 contract_type: 'repair', // Your enum value for repair
@@ -326,6 +334,12 @@ const getRODataByROID = async (req, res, next) => {
 //                 equipment_id: repairOrder.equipment_id,
 //                 customer_id: repairOrder.customer_id
 //             },
+//             include: [
+//                 {
+//                     model: models.users, // Include the user data
+//                     as: 'user', // You can use 'as' if there's an alias for this association
+//                 },
+//             ],
 //         });
 //
 //         // Combine equipmentCard, technician, and contract data
@@ -342,6 +356,7 @@ const getRODataByROID = async (req, res, next) => {
 //         console.error(error, 'ERROR');
 //     }
 // };
+
 
 
 
