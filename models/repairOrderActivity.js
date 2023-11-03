@@ -57,12 +57,20 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.STRING,
             allowNull: true
         },
+        start_date: {
+            type: DataTypes.STRING,
+            allowNull: true
+        },
+        end_date: {
+            type: DataTypes.STRING,
+            allowNull: true
+        },
         start_time: {
-            type: DataTypes.DATE,
+            type: DataTypes.STRING,
             allowNull: true
         },
         end_time: {
-            type: DataTypes.DATE,
+            type: DataTypes.STRING,
             allowNull: true
         },
         status: {
@@ -70,7 +78,7 @@ module.exports = (sequelize, DataTypes) => {
             defaultValue: 'open',
         },
         meeting_location: {
-            type: Sequelize.ENUM('customer site', 'repair lab'),
+            type: Sequelize.ENUM('customer site', 'repair lab', 'phone call'),
             allowNull: true,
         },
         createdAt: {

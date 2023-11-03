@@ -57,6 +57,23 @@ const createRepairOrder = async (req, res) => {
     }
 };
 
+const createRepairOrderActivity = async (req, res) => {
+    try {
+        console.log(req.body, 'REQ BODY!!')
+        const createdRepairOrderActivity = await models.repair_order_activities.create(req.body);
+
+        const id = createdRepairOrderActivity.id;
+        console.log(id, 'Repair Order Activity ID');
+
+        res.status(200).json({ message: 'Repair Order Activity created successfully', data: id });
+    } catch (error) {
+        console.error('Error creating repair order activity:', error);
+        res.status(500).json({ error: 'An error occurred while creating the repair order activity' });
+    }
+}
+
+// Make the 'createRepairOrderActivity' function available for use in your routes
+module.exports = { createRepairOrderActivity };
 
 const  createServiceContract = async(req, res) => {
     try{
@@ -545,5 +562,6 @@ module.exports = {
     updateServiceContract,
     createRepairOrder,
     getRODataByROID,
-    updateRepairOrder
+    updateRepairOrder,
+    createRepairOrderActivity
 }

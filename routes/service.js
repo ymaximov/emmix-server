@@ -5,6 +5,7 @@ const serviceController = require('../controllers/serviceController')
 const salesController = require("../controllers/sales");
 
 router.post('/create-equipment-card', auth, serviceController.createEquipmentCard)
+router.post('/create-ro-activity', auth, serviceController.createRepairOrderActivity)
 router.post('/create-repair-order', auth, serviceController.createRepairOrder)
 router.post('/create-service-contract', auth, serviceController.createServiceContract)
 router.get('/get-ec-data-by-id/:id', auth, serviceController.getECDataByECID)
