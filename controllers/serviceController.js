@@ -318,7 +318,7 @@ const getRODataByROID = async (req, res, next) => {
             where: {
                 contract_type: 'repair', // Your enum value for repair
                 tenant_id: repairOrder.tenant_id,
-                status: 'open', // Your enum value for open
+                status: 'approved',
                 equipment_id: repairOrder.equipment_id,
                 customer_id: repairOrder.customer_id,
             },
