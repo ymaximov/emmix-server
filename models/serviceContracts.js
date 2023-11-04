@@ -53,6 +53,22 @@ module.exports = (sequelize, DataTypes) => {
                     key: 'id',
                 },
             },
+            repair_model_id: {
+                type: DataTypes.INTEGER,
+                allowNull: true,
+                references: {
+                    model: 'repair_contract_models',
+                    key: 'id',
+                },
+            },
+            service_model_id: {
+                type: DataTypes.INTEGER,
+                allowNull: true,
+                references: {
+                    model: 'service_contract_models',
+                    key: 'id',
+                },
+            },
             start_date: {
                 type: DataTypes.DATE,
                 allowNull: true,

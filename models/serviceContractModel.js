@@ -35,6 +35,10 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.TEXT,
             allowNull: true
         },
+        price: {
+            type: DataTypes.DECIMAL(10, 2),
+            allowNull: false
+        },
         status: {
             type: Sequelize.ENUM('active', 'inactive'),
             defaultValue: 'inactive',
