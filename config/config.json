@@ -1,7 +1,7 @@
 {
   "development": {
-    "username": "postgres",
-    "password": "Bitilto05!",
+    "username": "root_user",
+    "password": "1234",
     "database": "emmix",
     "host": "localhost",
     "dialect": "postgres"

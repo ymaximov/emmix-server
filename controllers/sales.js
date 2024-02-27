@@ -1043,6 +1043,20 @@ const voidSO = async (req, res) => {
     }
 };
 
+const getSalesOrders = async (req, res) => {
+    const tenantId = req.params.tenantId;
+
+    try {
+        const salesOrders = await models.sales_orders.findAll({
+            where: {
+                tenant_id: tenantId,
+            },
+        })
+        return res.status(200).json({ salesOrders });
+    } catch (e) {
+        return res.status(400).json({ message: 'Cannot get sales orders list.' });
+    }
+}
 
 // const voidSO = async (req, res) => {
 //     try {
@@ -1300,7 +1314,7 @@ const releaseSO = async (req, res) => {
         }
 
         // Update the released column to true
-        await salesOrder.update({ released: true });
+        await salesOrder.update({ released: true, invoiced: true });
 
         return res.status(200).json({ message: 'Sales order released successfully' });
     } catch (error) {
@@ -1310,9 +1324,6 @@ const releaseSO = async (req, res) => {
 };
 
 module.exports = releaseSO;
-
-
-
 
 module.exports = {
     createSalesQuotation,
@@ -1327,5 +1338,6 @@ module.exports = {
     convertSQToSO,
     deleteSOItemAndUpdate,
     voidSO,
-    releaseSO
+    releaseSO,
+    getSalesOrders
 }
