@@ -4,14 +4,9 @@ const axios = require('axios');
 const models = require('../models')
 const fs = require('fs');
 const path = require('path');
+const { oauthClient } = require('../providers/intuitOauthClient');
 
 //const getIntuitAPIUrl = realmId => `https://sandbox-quickbooks.api.intuit.com/v3/company/${realmId}`
-const oauthClient = new OAuthClient({
-    clientId: process.env.REACT_APP_CLIENT_ID,
-    clientSecret: process.env.REACT_APP_CLIENT_SECRET,
-    environment: process.env.REACT_APP_ENVIRONMENT,
-    redirectUri: process.env.REACT_APP_REDIRECT_URI,
-});
 
 const createAuthorizeUrl = async (req, res) => {
     const authorizeURL = oauthClient.authorizeUri({
