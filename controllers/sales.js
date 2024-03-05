@@ -4,6 +4,8 @@ const jwt = require('jsonwebtoken');
 const moment = require('moment');
 const models = require('../models')
 const CryptoJS = require('crypto-js');
+const { oauthClient } = require('../providers/intuitOauthClient');
+const axios = require("axios");
 
 const createSalesQuotation = async(req, res) => {
     try{
@@ -876,6 +878,9 @@ const convertSQToSO = async (req, res) => {
 };
 
 const voidSO = async (req, res) => {
+    const access_token = oauthClient.token.getToken();
+    const companyID = oauthClient.getToken().realmId;
+
     try {
         const { tenant_id, so_id } = req.body;
 
@@ -961,6 +966,25 @@ const voidSO = async (req, res) => {
             // Update the status to "void" (assuming "void" is an enum value)
             salesOrderToUpdate.status = 'void';
 
+            const intuitAPIUrl = `https://sandbox-quickbooks.api.intuit.com/v3/company/${companyID}/invoice?operation=void&minorversion=70`;
+
+            const requestBody = {
+                "SyncToken": "0",
+                "Id": so_id
+            };
+
+            try {
+                await axios({
+                    method: 'post',
+                    url: intuitAPIUrl,
+                    data: requestBody,
+                    headers: {
+                        'Authorization': `Bearer ${access_token.access_token}`,
+                    }
+                });
+            } catch (e) {
+                console.error({ message: 'Cannot avoid invoice on Quickbooks' })
+            }
             // Save the updated sales order
             await salesOrderToUpdate.save();
 
@@ -1043,6 +1067,20 @@ const voidSO = async (req, res) => {
     }
 };
 
+const getSalesOrders = async (req, res) => {
+    const tenantId = req.params.tenantId;
+
+    try {
+        const salesOrders = await models.sales_orders.findAll({
+            where: {
+                tenant_id: tenantId,
+            },
+        })
+        return res.status(200).json({ salesOrders });
+    } catch (e) {
+        return res.status(400).json({ message: 'Cannot get sales orders list.' });
+    }
+}
 
 // const voidSO = async (req, res) => {
 //     try {
@@ -1300,7 +1338,7 @@ const releaseSO = async (req, res) => {
         }
 
         // Update the released column to true
-        await salesOrder.update({ released: true });
+        await salesOrder.update({ released: true, invoiced: true });
 
         return res.status(200).json({ message: 'Sales order released successfully' });
     } catch (error) {
@@ -1310,9 +1348,6 @@ const releaseSO = async (req, res) => {
 };
 
 module.exports = releaseSO;
-
-
-
 
 module.exports = {
     createSalesQuotation,
@@ -1327,5 +1362,6 @@ module.exports = {
     convertSQToSO,
     deleteSOItemAndUpdate,
     voidSO,
-    releaseSO
+    releaseSO,
+    getSalesOrders
 }
